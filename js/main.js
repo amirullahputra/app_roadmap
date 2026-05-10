@@ -20,7 +20,9 @@ window.addEventListener('unhandledrejection', e => {
 
 const SUPA_URL = 'https://guhhoqpvwzzrlwgfugsb.supabase.co';
 const SUPA_KEY = 'sb_publishable_yu8KTS5mId2hV7kVjScvZA_-geYqKHv';
+console.log('[roadmap] module start, window.supabase=', typeof window.supabase);
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+console.log('[roadmap] supa created');
 
 const APP_PEP      = 'https://amirullahputra.github.io/app_pep/';
 const APP_EXERCISE = 'https://amirullahputra.github.io/app_exercise/';
@@ -632,6 +634,8 @@ document.getElementById('auth-pass')?.addEventListener('keydown',e=>{ if(e.key==
 
 // ── INIT ──
 (async()=>{
+  console.log('[roadmap] init start');
+  document.getElementById('panels-root').innerHTML = '<div style="padding:1rem;color:grey;font-size:12px">Loading…</div>';
   // Load quarters + milestones
   try {
     const [{ data:qData },{ data:msData }] = await Promise.all([
@@ -687,5 +691,7 @@ document.getElementById('auth-pass')?.addEventListener('keydown',e=>{ if(e.key==
     render();
   });
 
+  console.log('[roadmap] calling render(), S.quarters=', S.quarters.length);
   render();
+  console.log('[roadmap] render done, panels-root len=', document.getElementById('panels-root').innerHTML.length);
 })();
