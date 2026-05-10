@@ -637,26 +637,28 @@ document.getElementById('auth-pass')?.addEventListener('keydown',e=>{ if(e.key==
 (async()=>{
   console.log('[roadmap] init start');
   document.getElementById('panels-root').innerHTML = '<div style="padding:1rem;color:grey;font-size:12px">Loading…</div>';
+
   // Load quarters + milestones
+  console.log('[roadmap] fetching quarters...');
   try {
-    const [{ data:qData },{ data:msData }] = await Promise.all([
-      supa.from('quarters').select('quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end'),
-      supa.from('quarter_milestones').select('quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note').order('week_label'),
-    ]);
-    S.quarters   = sortQuarters(qData  || []);
-    S.milestones = msData || [];
-  } catch(e){ console.error('init load:',e); S.quarters=[]; S.milestones=[]; }
+    const r1 = await supa.from('quarters').select('quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end');
+    console.log('[roadmap] quarters result:', r1.error || 'ok', (r1.data||[]).length);
+    const r2 = await supa.from('quarter_milestones').select('quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note').order('week_label');
+    console.log('[roadmap] milestones result:', r2.error || 'ok', (r2.data||[]).length);
+    S.quarters   = sortQuarters(r1.data || []);
+    S.milestones = r2.data || [];
+  } catch(e){ console.error('[roadmap] init load threw:', e); S.quarters=[]; S.milestones=[]; }
+
+  console.log('[roadmap] S.quarters.length=', S.quarters.length);
 
   // Determine current quarter & week
   S.currentWeek = getWeekNum();
-  S.currentQuarter = S.quarters.find(q => {
-    const start = new Date(q.window_raw?.split('–')[0]?.trim() + ' 2026' || '2026-07-06');
-    return S.currentWeek > 0;
-  }) || S.quarters[0] || null;
+  S.currentQuarter = S.quarters[0] || null;
 
   if(S.quarters.length){
     S.selectedQ = S.quarters[0].quarter_id;
-    try { await loadContentForQ(S.selectedQ); } catch(e){ console.error('loadContent:',e); }
+    console.log('[roadmap] loading content for', S.selectedQ);
+    try { await loadContentForQ(S.selectedQ); } catch(e){ console.error('[roadmap] loadContent threw:', e); }
   }
 
   // Auth listener — load live data on login
