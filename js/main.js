@@ -616,12 +616,14 @@ document.getElementById('auth-pass').addEventListener('keydown',e=>{ if(e.key===
 // ── INIT ──
 (async()=>{
   // Load quarters + milestones
-  const [{ data:qData },{ data:msData }] = await Promise.all([
-    supa.from('quarters').select('quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end'),
-    supa.from('quarter_milestones').select('quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note').order('week_label'),
-  ]);
-  S.quarters   = sortQuarters(qData  || []);
-  S.milestones = msData || [];
+  try {
+    const [{ data:qData },{ data:msData }] = await Promise.all([
+      supa.from('quarters').select('quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end'),
+      supa.from('quarter_milestones').select('quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note').order('week_label'),
+    ]);
+    S.quarters   = sortQuarters(qData  || []);
+    S.milestones = msData || [];
+  } catch(e){ console.error('init load:',e); S.quarters=[]; S.milestones=[]; }
 
   // Determine current quarter & week
   S.currentWeek = getWeekNum();
@@ -632,7 +634,7 @@ document.getElementById('auth-pass').addEventListener('keydown',e=>{ if(e.key===
 
   if(S.quarters.length){
     S.selectedQ = S.quarters[0].quarter_id;
-    await loadContentForQ(S.selectedQ);
+    try { await loadContentForQ(S.selectedQ); } catch(e){ console.error('loadContent:',e); }
   }
 
   // Auth listener — load live data on login
