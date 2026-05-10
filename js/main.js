@@ -610,8 +610,8 @@ function updateAuthUI(user){
   else { lbl.textContent=''; btn.textContent='Login'; btn.classList.remove('logout'); }
 }
 
-document.getElementById('auth-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) window.closeAuthModal(); });
-document.getElementById('auth-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') window.doLogin(); });
+document.getElementById('auth-modal')?.addEventListener('click',e=>{ if(e.target===e.currentTarget) window.closeAuthModal(); });
+document.getElementById('auth-pass')?.addEventListener('keydown',e=>{ if(e.key==='Enter') window.doLogin(); });
 
 // ── INIT ──
 (async()=>{
