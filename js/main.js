@@ -166,6 +166,7 @@ function renderPanel(){
     else if(S.tab===2) html = pDocs();
     else if(S.tab===3) html = pBodyComp();
     else               html = pRaceGoals();
+    console.log('[roadmap] renderPanel html len=', html.length, 'tab=', S.tab);
     document.getElementById('panels-root').innerHTML = html;
   } catch(e) {
     console.error('renderPanel error:', e);
@@ -664,26 +665,29 @@ document.getElementById('auth-pass')?.addEventListener('keydown',e=>{ if(e.key==
     updateAuthUI(S.user);
     if(S.user){
       const weekStart = getWeekStart();
-      const qid = S.currentQuarter?.quarter_id || S.quarters[0]?.quarter_id;
-
-      const [{ data:bcAll },{ data:gymWeek },{ data:cardioWeek }] = await Promise.all([
-        supa.from('body_comp_log')
-          .select('id,logged_date,week_num,weight_kg,bf_pct,lbm_kg,waist_cm,notes')
-          .eq('user_id', S.user.id).order('logged_date', { ascending:true }),
-        supa.from('gym_sessions')
-          .select('id,session_date,week_num,duration_min,notes')
-          .eq('user_id', S.user.id).gte('session_date', weekStart)
-          .order('session_date', { ascending:false }),
-        supa.from('cardio_log')
-          .select('id,logged_date,week_num,slot,cardio_type,duration_min,distance_km,zone')
-          .eq('user_id', S.user.id).gte('logged_date', weekStart)
-          .order('logged_date', { ascending:false }),
-      ]);
-
-      S.bodyCompLog        = bcAll || [];
-      S.latestBodyComp     = bcAll?.length ? bcAll[bcAll.length-1] : null;
-      S.activeGymSessions  = gymWeek || [];
-      S.activeCardioLog    = cardioWeek || [];
+      try {
+        const [{ data:bcAll },{ data:gymWeek },{ data:cardioWeek }] = await Promise.all([
+          supa.from('body_comp_log')
+            .select('id,logged_date,week_num,weight_kg,bf_pct,lbm_kg,waist_cm,notes')
+            .eq('user_id', S.user.id).order('logged_date', { ascending:true }),
+          supa.from('gym_sessions')
+            .select('id,session_date,week_num,duration_min,notes')
+            .eq('user_id', S.user.id).gte('session_date', weekStart)
+            .order('session_date', { ascending:false }),
+          supa.from('cardio_log')
+            .select('id,logged_date,week_num,slot,cardio_type,duration_min,distance_km,zone')
+            .eq('user_id', S.user.id).gte('logged_date', weekStart)
+            .order('logged_date', { ascending:false }),
+        ]);
+        S.bodyCompLog        = bcAll || [];
+        S.latestBodyComp     = bcAll?.length ? bcAll[bcAll.length-1] : null;
+        S.activeGymSessions  = gymWeek || [];
+        S.activeCardioLog    = cardioWeek || [];
+      } catch(e) {
+        console.error('auth data load error:', e);
+        S.bodyCompLog = []; S.latestBodyComp = null;
+        S.activeGymSessions = []; S.activeCardioLog = [];
+      }
     } else {
       S.bodyCompLog = []; S.latestBodyComp = null;
       S.activeGymSessions = []; S.activeCardioLog = [];
