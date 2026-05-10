@@ -71,79 +71,56 @@ function getWeekStart(){
 // ── MARKDOWN ──
 function renderMd(md){
   if(!md) return `<div class="empty-state"><div class="empty-ico">📄</div><div class="empty-txt">Belum ada konten untuk quarter ini.</div></div>`;
+  try {
+    const lines = md.split('\n');
+    let html = '';
+    let i = 0;
 
-  const lines = md.split('\n');
-  let html = '';
-  let i = 0;
+    while(i < lines.length){
+      const line = lines[i];
 
-  while(i < lines.length){
-    const line = lines[i];
-
-    // Table — detect by | at start
-    if(/^\|.+\|/.test(line)){
-      let tableLines = [];
-      while(i < lines.length && /^\|/.test(lines[i])){
-        tableLines.push(lines[i]);
-        i++;
+      // Table
+      if(/^\|.+\|/.test(line)){
+        let tableLines = [];
+        while(i < lines.length && /^\|/.test(lines[i])){ tableLines.push(lines[i]); i++; }
+        const rows = tableLines.filter(l => !/^\|[\s\-|:]+\|$/.test(l));
+        if(rows.length){
+          const parseRow = (r, tag) => {
+            const cells = r.replace(/^\||\|$/g,'').split('|')
+              .map(c=>`<${tag}>${renderInline(c.trim())}</${tag}>`).join('');
+            return `<tr>${cells}</tr>`;
+          };
+          html += `<div class="tbl-wrap" style="margin:10px 0"><table><thead>${parseRow(rows[0],'th')}</thead><tbody>${rows.slice(1).map(r=>parseRow(r,'td')).join('')}</tbody></table></div>`;
+        }
+        continue;
       }
-      // Remove separator row (|---|---|)
-      const rows = tableLines.filter(l => !/^\|[\s\-|:]+\|$/.test(l));
-      if(rows.length){
-        const parseRow = (r, tag) => {
-          const cells = r.replace(/^\||\|$/g,'').split('|')
-            .map(c => `<${tag}>${renderInline(c.trim())}</${tag}>`).join('');
-          return `<tr>${cells}</tr>`;
-        };
-        const thead = `<thead>${parseRow(rows[0],'th')}</thead>`;
-        const tbody = rows.slice(1).map(r=>parseRow(r,'td')).join('');
-        html += `<div class="tbl-wrap" style="margin:10px 0"><table>${thead}<tbody>${tbody}</tbody></table></div>`;
+      if(/^### /.test(line)){ html += `<h3>${renderInline(line.slice(4))}</h3>`; i++; continue; }
+      if(/^## /.test(line)){  html += `<h2>${renderInline(line.slice(3))}</h2>`; i++; continue; }
+      if(/^# /.test(line)){   html += `<h1>${renderInline(line.slice(2))}</h1>`; i++; continue; }
+      if(/^---+$/.test(line)){ html += '<hr>'; i++; continue; }
+      if(/^- /.test(line)){
+        let items = [];
+        while(i < lines.length && /^- /.test(lines[i])){ items.push(`<li>${renderInline(lines[i].slice(2))}</li>`); i++; }
+        html += `<ul>${items.join('')}</ul>`; continue;
       }
-      continue;
-    }
-
-    // Headings
-    if(/^### /.test(line)){ html += `<h3>${renderInline(line.slice(4))}</h3>`; i++; continue; }
-    if(/^## /.test(line)){  html += `<h2>${renderInline(line.slice(3))}</h2>`; i++; continue; }
-    if(/^# /.test(line)){   html += `<h1>${renderInline(line.slice(2))}</h1>`; i++; continue; }
-
-    // HR
-    if(/^---+$/.test(line)){ html += '<hr>'; i++; continue; }
-
-    // Bullet list — collect consecutive
-    if(/^- /.test(line)){
-      let items = [];
-      while(i < lines.length && /^- /.test(lines[i])){
-        items.push(`<li>${renderInline(lines[i].slice(2))}</li>`);
-        i++;
+      if(/^\d+\. /.test(line)){
+        let items = [];
+        while(i < lines.length && /^\d+\. /.test(lines[i])){ items.push(`<li>${renderInline(lines[i].replace(/^\d+\. /,''))}</li>`); i++; }
+        html += `<ol>${items.join('')}</ol>`; continue;
       }
-      html += `<ul>${items.join('')}</ul>`;
-      continue;
-    }
-
-    // Numbered list
-    if(/^\d+\. /.test(line)){
-      let items = [];
-      while(i < lines.length && /^\d+\. /.test(lines[i])){
-        items.push(`<li>${renderInline(lines[i].replace(/^\d+\. /,''))}</li>`);
-        i++;
+      if(line.trim() === ''){ i++; continue; }
+      let para = [];
+      while(i < lines.length && lines[i].trim() !== '' && !/^[#\-|]/.test(lines[i]) && !/^\d+\. /.test(lines[i]) && !/^---/.test(lines[i])){
+        para.push(lines[i]); i++;
       }
-      html += `<ol>${items.join('')}</ol>`;
-      continue;
+      if(para.length) html += `<p>${renderInline(para.join(' '))}</p>`;
     }
-
-    // Empty line
-    if(line.trim() === ''){ i++; continue; }
-
-    // Paragraph
-    let para = [];
-    while(i < lines.length && lines[i].trim() !== '' && !/^[#\-|>]/.test(lines[i]) && !/^\d+\. /.test(lines[i]) && !/^---/.test(lines[i])){
-      para.push(lines[i]);
-      i++;
-    }
-    if(para.length) html += `<p>${renderInline(para.join(' '))}</p>`;
+    return html;
+  } catch(e) {
+    console.error('renderMd error:', e);
+    // Fallback: render as preformatted text
+    return `<pre style="white-space:pre-wrap;font-size:12px;color:var(--t1)">${md.replace(/</g,'&lt;')}</pre>`;
   }
-
-  return html;
 }
 
 function renderInline(text){
@@ -162,13 +139,19 @@ function renderTabNav(){
 }
 
 function renderPanel(){
-  let html = '';
-  if(S.tab===0)      html = pOverview();
-  else if(S.tab===1) html = pMilestones();
-  else if(S.tab===2) html = pDocs();
-  else if(S.tab===3) html = pBodyComp();
-  else               html = pRaceGoals();
-  document.getElementById('panels-root').innerHTML = html;
+  try {
+    let html = '';
+    if(S.tab===0)      html = pOverview();
+    else if(S.tab===1) html = pMilestones();
+    else if(S.tab===2) html = pDocs();
+    else if(S.tab===3) html = pBodyComp();
+    else               html = pRaceGoals();
+    document.getElementById('panels-root').innerHTML = html;
+  } catch(e) {
+    console.error('renderPanel error:', e);
+    document.getElementById('panels-root').innerHTML =
+      `<div class="card"><div class="empty-state"><div class="empty-ico">⚠️</div><div class="empty-txt">Error: ${e.message}</div></div></div>`;
+  }
 }
 
 function render(){ renderTabNav(); renderPanel(); }
