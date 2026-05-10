@@ -71,18 +71,87 @@ function getWeekStart(){
 // ── MARKDOWN ──
 function renderMd(md){
   if(!md) return `<div class="empty-state"><div class="empty-ico">📄</div><div class="empty-txt">Belum ada konten untuk quarter ini.</div></div>`;
-  const html = md
-    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
-    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
-    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+
+  const lines = md.split('\n');
+  let html = '';
+  let i = 0;
+
+  while(i < lines.length){
+    const line = lines[i];
+
+    // Table — detect by | at start
+    if(/^\|.+\|/.test(line)){
+      let tableLines = [];
+      while(i < lines.length && /^\|/.test(lines[i])){
+        tableLines.push(lines[i]);
+        i++;
+      }
+      // Remove separator row (|---|---|)
+      const rows = tableLines.filter(l => !/^\|[\s\-|:]+\|$/.test(l));
+      if(rows.length){
+        const parseRow = (r, tag) => {
+          const cells = r.replace(/^\||\|$/g,'').split('|')
+            .map(c => `<${tag}>${renderInline(c.trim())}</${tag}>`).join('');
+          return `<tr>${cells}</tr>`;
+        };
+        const thead = `<thead>${parseRow(rows[0],'th')}</thead>`;
+        const tbody = rows.slice(1).map(r=>parseRow(r,'td')).join('');
+        html += `<div class="tbl-wrap" style="margin:10px 0"><table>${thead}<tbody>${tbody}</tbody></table></div>`;
+      }
+      continue;
+    }
+
+    // Headings
+    if(/^### /.test(line)){ html += `<h3>${renderInline(line.slice(4))}</h3>`; i++; continue; }
+    if(/^## /.test(line)){  html += `<h2>${renderInline(line.slice(3))}</h2>`; i++; continue; }
+    if(/^# /.test(line)){   html += `<h1>${renderInline(line.slice(2))}</h1>`; i++; continue; }
+
+    // HR
+    if(/^---+$/.test(line)){ html += '<hr>'; i++; continue; }
+
+    // Bullet list — collect consecutive
+    if(/^- /.test(line)){
+      let items = [];
+      while(i < lines.length && /^- /.test(lines[i])){
+        items.push(`<li>${renderInline(lines[i].slice(2))}</li>`);
+        i++;
+      }
+      html += `<ul>${items.join('')}</ul>`;
+      continue;
+    }
+
+    // Numbered list
+    if(/^\d+\. /.test(line)){
+      let items = [];
+      while(i < lines.length && /^\d+\. /.test(lines[i])){
+        items.push(`<li>${renderInline(lines[i].replace(/^\d+\. /,''))}</li>`);
+        i++;
+      }
+      html += `<ol>${items.join('')}</ol>`;
+      continue;
+    }
+
+    // Empty line
+    if(line.trim() === ''){ i++; continue; }
+
+    // Paragraph
+    let para = [];
+    while(i < lines.length && lines[i].trim() !== '' && !/^[#\-|>]/.test(lines[i]) && !/^\d+\. /.test(lines[i]) && !/^---/.test(lines[i])){
+      para.push(lines[i]);
+      i++;
+    }
+    if(para.length) html += `<p>${renderInline(para.join(' '))}</p>`;
+  }
+
+  return html;
+}
+
+function renderInline(text){
+  return text
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
     .replace(/`(.+?)`/g,'<code>$1</code>')
-    .replace(/^---$/gm,'<hr>')
-    .replace(/^\- (.+)$/gm,'<li>$1</li>')
-    .replace(/^(\d+)\. (.+)$/gm,'<li><strong>$1.</strong> $2</li>')
-    .replace(/\n\n/g,'</p><p>')
-    .replace(/(<li>.*?<\/li>\n?)+/gs, m=>`<ul>${m}</ul>`);
-  return `<p>${html}</p>`.replace(/<p><\/p>/g,'');
+    .replace(/\[(.+?)\]\((.+?)\)/g,'<a href="$2" target="_blank">$1</a>');
 }
 
 // ── RENDER ──
