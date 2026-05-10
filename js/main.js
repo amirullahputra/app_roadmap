@@ -114,6 +114,7 @@ function renderMd(md){
         para.push(lines[i]); i++;
       }
       if(para.length) html += `<p>${renderInline(para.join(' '))}</p>`;
+      else i++; // fallback: skip unmatched line to prevent infinite loop
     }
     return html;
   } catch(e) {
