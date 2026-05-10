@@ -413,7 +413,6 @@ function pRaceGoals(){
 }
 
 // ── AUTH ──
-function usernameToEmail(u){ return u.trim().toLowerCase().replace(/\s+/g,'_')+'@peptideapp.local'; }
 window.closeAuthModal = function(){ document.getElementById('auth-modal').classList.remove('open'); document.getElementById('auth-err').textContent=''; };
 window.onAuthBtnClick = function(){
   const btn = document.getElementById('auth-action-btn');
@@ -421,13 +420,13 @@ window.onAuthBtnClick = function(){
   else document.getElementById('auth-modal').classList.add('open');
 };
 window.doLogin = async function(){
-  const user = document.getElementById('auth-user').value.trim();
-  const pass = document.getElementById('auth-pass').value;
+  const email = document.getElementById('auth-user').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
   const errEl = document.getElementById('auth-err');
   errEl.textContent = '';
-  if(!user){ errEl.textContent='Username kosong.'; return; }
-  const { error } = await supa.auth.signInWithPassword({ email:usernameToEmail(user), password:pass });
-  if(error){ errEl.textContent='Username atau password salah.'; return; }
+  if(!email){ errEl.textContent='Email kosong.'; return; }
+  const { error } = await supa.auth.signInWithPassword({ email, password:pass });
+  if(error){ errEl.textContent='Email atau password salah.'; return; }
   window.closeAuthModal();
 };
 
