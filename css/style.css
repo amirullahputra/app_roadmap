@@ -385,3 +385,7 @@ input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer;height:4px}
 .g-cell:hover{opacity:.75;transform:scaleY(1.15)}
 .g-custom{outline:2px solid var(--hor);outline-offset:-2px}
 .g-custom::after{content:'✎';position:absolute;top:0;right:1px;font-size:7px;color:var(--hor);line-height:18px}
+
+/* Body comp form */
+.form-inp{background:var(--bg2);border:1.5px solid var(--bdr2);border-radius:var(--r);color:var(--t0);padding:7px 10px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;transition:.15s}
+.form-inp:focus{border-color:var(--acc)}

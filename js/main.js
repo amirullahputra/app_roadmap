@@ -399,52 +399,109 @@ function pBodyComp(){
   if(!S.user) return `
     <div class="card">
       <div class="card-title">📊 Body Composition Log</div>
-      <div class="empty-state"><div class="empty-ico">🔒</div><div class="empty-txt">Login untuk melihat data body comp kamu</div></div>
+      <div class="empty-state"><div class="empty-ico">🔒</div><div class="empty-txt">Login untuk melihat dan input data body comp kamu</div></div>
     </div>`;
 
-  const log = S.bodyCompLog;
-  if(!log.length) return `
-    <div class="card">
-      <div class="card-title">📊 Body Composition Log</div>
-      <div class="empty-state"><div class="empty-ico">📊</div><div class="empty-txt">Belum ada data. Mulai log setelah protokol dimulai.</div></div>
-    </div>`;
+  const log  = S.bodyCompLog;
+  const last = log.length ? log[log.length-1] : null;
+  const today = new Date().toISOString().split('T')[0];
 
-  // mini progress bar per entry vs target
-  return `
+  // ── progress cards ──
+  const statsHtml = last ? `
     <div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">🎯 Progress vs Target</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div class="card-title">📍 Kondisi Terakhir <span style="font-size:9px;font-weight:600;color:var(--t3);margin-left:4px">${fmtDate(last.logged_date)}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
         ${[
-          { l:'BF% Saat Ini', v:log[log.length-1].bf_pct, target:TARGET_BF_HI, unit:'%', color:'var(--f3)', lower:true },
-          { l:'LBM Saat Ini', v:log[log.length-1].lbm_kg, target:TARGET_LBM, unit:' kg', color:'var(--acc)', lower:false },
-          { l:'BB Saat Ini', v:log[log.length-1].weight_kg, target:S.currentQuarter?.bb_end, unit:' kg', color:'var(--f2)', lower:true },
-        ].map(x=>`
-          <div style="background:var(--bg2);border-radius:var(--r);padding:.75rem;border:1px solid var(--bdr)">
+          { l:'Body Weight', v:last.weight_kg, tgt:S.currentQuarter?.bb_end, unit:' kg', color:'var(--f2)', lower:true },
+          { l:'Body Fat %',  v:last.bf_pct,    tgt:TARGET_BF_HI,             unit:'%',   color:'var(--f3)', lower:true },
+          { l:'Lean Mass',   v:last.lbm_kg,    tgt:TARGET_LBM,               unit:' kg', color:'var(--acc)', lower:false },
+          { l:'Pinggang',    v:last.waist_cm,  tgt:null,                     unit:' cm', color:'var(--t1)', lower:true },
+        ].map(x=>{
+          const ok = x.tgt==null ? null : x.lower ? x.v<=x.tgt : x.v>=x.tgt;
+          const clr = ok===null ? x.color : ok ? 'var(--f3)' : 'var(--warn)';
+          return `<div style="background:var(--bg2);border-radius:var(--r);padding:.75rem;border:1px solid var(--bdr)">
             <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">${x.l}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:${x.color}">${x.v??'—'}${x.v!=null?x.unit:''}</div>
-            <div style="font-size:9px;color:var(--t3);margin-top:2px">Target: ${x.target??'?'}${x.unit}</div>
-          </div>`).join('')}
+            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:${clr}">${x.v??'—'}${x.v!=null?x.unit:''}</div>
+            <div style="font-size:9px;color:var(--t3);margin-top:2px">${x.tgt!=null?'Target: '+x.tgt+x.unit:'—'}</div>
+          </div>`;
+        }).join('')}
       </div>
-    </div>
+      ${log.length >= 2 ? (() => {
+        const first = log[0];
+        const dBB  = (last.weight_kg - first.weight_kg).toFixed(1);
+        const dBF  = last.bf_pct && first.bf_pct ? (last.bf_pct - first.bf_pct).toFixed(1) : null;
+        const dLBM = last.lbm_kg  && first.lbm_kg  ? (last.lbm_kg - first.lbm_kg).toFixed(1) : null;
+        const arrow = v => parseFloat(v) < 0 ? '▼' : parseFloat(v) > 0 ? '▲' : '→';
+        return `<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--bdr);display:flex;gap:16px;flex-wrap:wrap">
+          <div style="font-size:10px;color:var(--t3)">Perubahan dari awal log (${fmtDate(first.logged_date)}):</div>
+          <span style="font-size:11px;font-weight:700;color:${parseFloat(dBB)<0?'var(--f3)':'var(--warn)'}">${arrow(dBB)} BB ${dBB} kg</span>
+          ${dBF!=null?`<span style="font-size:11px;font-weight:700;color:${parseFloat(dBF)<0?'var(--f3)':'var(--warn)'}">${arrow(dBF)} BF% ${dBF}%</span>`:''}
+          ${dLBM!=null?`<span style="font-size:11px;font-weight:700;color:${parseFloat(dLBM)>0?'var(--f3)':'var(--warn)'}">${arrow(dLBM)} LBM ${dLBM} kg</span>`:''}
+        </div>`;
+      })() : ''}
+    </div>` : '';
+
+  // ── input form ──
+  const formHtml = `
+    <div class="card" style="margin-bottom:.75rem">
+      <div class="card-title">➕ Input Data Baru</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:.875rem">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">TANGGAL</div>
+          <input class="form-inp" type="date" id="bc-date" value="${today}" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">BODY WEIGHT (kg)</div>
+          <input class="form-inp" type="number" id="bc-bb" step="0.1" min="30" max="200" placeholder="misal: 79.5" style="width:100%" oninput="bcAutoLBM()">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">BODY FAT %</div>
+          <input class="form-inp" type="number" id="bc-bf" step="0.1" min="3" max="60" placeholder="misal: 22.5" style="width:100%" oninput="bcAutoLBM()">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">LEAN MASS (kg) <span style="font-weight:400;color:var(--t3);font-size:9px">auto</span></div>
+          <input class="form-inp" type="number" id="bc-lbm" step="0.1" min="20" max="150" placeholder="auto dari BB×BF" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">PINGGANG (cm)</div>
+          <input class="form-inp" type="number" id="bc-waist" step="0.5" min="50" max="150" placeholder="opsional" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">NOTES</div>
+          <input class="form-inp" type="text" id="bc-notes" placeholder="opsional..." style="width:100%">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="submitBodyComp()" style="padding:8px 18px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">💾 Simpan</button>
+        <span id="bc-msg" style="font-size:11px;color:var(--f3)"></span>
+      </div>
+    </div>`;
+
+  // ── history table ──
+  const histHtml = log.length ? `
     <div class="card">
-      <div class="card-title">📅 Log Riwayat</div>
+      <div class="card-title">📅 Riwayat Lengkap <span style="font-size:10px;font-weight:600;color:var(--t3);margin-left:4px">${log.length} entri</span></div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Tanggal</th><th>Week</th><th>BB</th><th>BF%</th><th>LBM</th><th>Pinggang</th><th>Notes</th></tr></thead>
+          <thead><tr><th>Tanggal</th><th>Week</th><th>BB</th><th>BF%</th><th>LBM</th><th>Pinggang</th><th>Notes</th><th></th></tr></thead>
           <tbody>
             ${[...log].reverse().map(r=>`<tr>
-              <td style="font-weight:700">${fmtDate(r.logged_date)}</td>
+              <td style="font-weight:700;white-space:nowrap">${fmtDate(r.logged_date)}</td>
               <td><span class="bdg bdg-acc">W${r.week_num||'?'}</span></td>
-              <td class="mono cost-v">${r.weight_kg||'—'} kg</td>
-              <td class="mono">${r.bf_pct||'—'}%</td>
-              <td class="mono">${r.lbm_kg||'—'} kg</td>
-              <td class="mono">${r.waist_cm||'—'} cm</td>
-              <td style="color:var(--t2)">${r.notes||''}</td>
+              <td class="mono" style="color:var(--f2);font-weight:700">${r.weight_kg??'—'} kg</td>
+              <td class="mono" style="color:var(--f3)">${r.bf_pct??'—'}${r.bf_pct!=null?'%':''}</td>
+              <td class="mono" style="color:var(--acc)">${r.lbm_kg??'—'}${r.lbm_kg!=null?' kg':''}</td>
+              <td class="mono">${r.waist_cm??'—'}${r.waist_cm!=null?' cm':''}</td>
+              <td style="color:var(--t2);font-size:10.5px">${r.notes||''}</td>
+              <td><button onclick="deleteBodyComp(${r.id})" style="padding:3px 8px;background:var(--warn-bg);border:1px solid var(--warn-bdr);color:var(--warn);border-radius:var(--r);font-size:10px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">✕</button></td>
             </tr>`).join('')}
           </tbody>
         </table>
       </div>
-    </div>`;
+    </div>` :
+    `<div class="card"><div class="empty-state"><div class="empty-ico">📊</div><div class="empty-txt">Belum ada data. Input data pertama kamu di atas!</div></div></div>`;
+
+  return statsHtml + formHtml + histHtml;
 }
 
 // ── PANEL: RACE GOALS ────────────────────────────────────
@@ -477,6 +534,56 @@ function pRaceGoals(){
         </div>`).join('')}
     </div>`;
 }
+
+// ── BODY COMP ACTIONS ────────────────────────────────────
+window.bcAutoLBM = function(){
+  const bb = parseFloat(document.getElementById('bc-bb')?.value);
+  const bf = parseFloat(document.getElementById('bc-bf')?.value);
+  const lbmEl = document.getElementById('bc-lbm');
+  if(lbmEl && bb > 0 && bf > 0){
+    lbmEl.value = (bb * (1 - bf/100)).toFixed(1);
+  }
+};
+
+window.submitBodyComp = async function(){
+  const msg = document.getElementById('bc-msg');
+  const date  = document.getElementById('bc-date').value;
+  const bb    = parseFloat(document.getElementById('bc-bb').value) || null;
+  const bf    = parseFloat(document.getElementById('bc-bf').value) || null;
+  const lbm   = parseFloat(document.getElementById('bc-lbm').value) || null;
+  const waist = parseFloat(document.getElementById('bc-waist').value) || null;
+  const notes = document.getElementById('bc-notes').value.trim() || null;
+  if(!date){ msg.textContent='Tanggal wajib diisi.'; msg.style.color='var(--warn)'; return; }
+  if(!bb && !bf){ msg.textContent='Minimal isi BB atau BF%.'; msg.style.color='var(--warn)'; return; }
+  msg.textContent='Menyimpan...'; msg.style.color='var(--t3)';
+  const wk = getWeekNum();
+  const { error } = await supa.from('body_comp_log').upsert({
+    user_id: S.user.id, logged_date: date, week_num: wk > 0 ? wk : null,
+    weight_kg: bb, bf_pct: bf, lbm_kg: lbm, waist_cm: waist, notes
+  }, { onConflict: 'user_id,logged_date' });
+  if(error){ msg.textContent='Error: '+error.message; msg.style.color='var(--warn)'; return; }
+  msg.textContent='✓ Tersimpan!'; msg.style.color='var(--f3)';
+  // reload
+  const { data } = await supa.from('body_comp_log')
+    .select('id,logged_date,week_num,weight_kg,bf_pct,lbm_kg,waist_cm,notes')
+    .eq('user_id', S.user.id).order('logged_date', { ascending:true });
+  S.bodyCompLog    = data || [];
+  S.latestBodyComp = data?.length ? data[data.length-1] : null;
+  renderPanel();
+  setTimeout(()=>{ const m=document.getElementById('bc-msg'); if(m) m.textContent=''; }, 3000);
+};
+
+window.deleteBodyComp = async function(id){
+  if(!confirm('Hapus entri ini?')) return;
+  const { error } = await supa.from('body_comp_log').delete().eq('id', id).eq('user_id', S.user.id);
+  if(error){ alert('Error: '+error.message); return; }
+  const { data } = await supa.from('body_comp_log')
+    .select('id,logged_date,week_num,weight_kg,bf_pct,lbm_kg,waist_cm,notes')
+    .eq('user_id', S.user.id).order('logged_date', { ascending:true });
+  S.bodyCompLog    = data || [];
+  S.latestBodyComp = data?.length ? data[data.length-1] : null;
+  renderPanel();
+};
 
 // ── AUTH ──
 window.closeAuthModal = function(){ document.getElementById('auth-modal').classList.remove('open'); document.getElementById('auth-err').textContent=''; };
@@ -538,7 +645,7 @@ document.getElementById('auth-pass').addEventListener('keydown',e=>{ if(e.key===
 
       const [{ data:bcAll },{ data:gymWeek },{ data:cardioWeek }] = await Promise.all([
         supa.from('body_comp_log')
-          .select('logged_date,week_num,weight_kg,bf_pct,lbm_kg,waist_cm,notes')
+          .select('id,logged_date,week_num,weight_kg,bf_pct,lbm_kg,waist_cm,notes')
           .eq('user_id', S.user.id).order('logged_date', { ascending:true }),
         supa.from('gym_sessions')
           .select('id,session_date,week_num,duration_min,notes')
