@@ -41,6 +41,19 @@ const S = {
 
 // ── UTILS ──
 function daysUntil(d){ return Math.ceil((new Date(d)-new Date())/(1000*60*60*24)); }
+
+function sortQuarters(arr){
+  return [...arr].sort((a,b)=>{
+    const parse = q => {
+      const m = q.quarter_id.match(/^(Q[13]Q[24])_(\d{4})$/);
+      if(!m) return 0;
+      const year = parseInt(m[2]);
+      const half = m[1].startsWith('Q1') ? 0 : 1;
+      return year * 10 + half;
+    };
+    return parse(a) - parse(b);
+  });
+}
 function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); }
 function getWeekNum(){
   const now = new Date(), start = new Date('2026-07-06');
@@ -444,10 +457,10 @@ document.getElementById('auth-pass').addEventListener('keydown',e=>{ if(e.key===
 (async()=>{
   // Load quarters + milestones
   const [{ data:qData },{ data:msData }] = await Promise.all([
-    supa.from('quarters').select('quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end').order('quarter_id'),
-    supa.from('quarter_milestones').select('quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note').order('quarter_id').order('week_label'),
+    supa.from('quarters').select('quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end'),
+    supa.from('quarter_milestones').select('quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note').order('week_label'),
   ]);
-  S.quarters   = qData  || [];
+  S.quarters   = sortQuarters(qData  || []);
   S.milestones = msData || [];
 
   // Determine current quarter & week
