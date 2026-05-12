@@ -175,8 +175,22 @@ function renderTabNav(){
   ).join('');
 }
 
+function renderQuarterCardsContainer(){
+  const el = document.getElementById('quarter-cards-row');
+  if(!el) return;
+  // Milestones tab (index 1): hide cards — tab itu sudah all-view via Full Timeline section
+  if(S.tab === 1){
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  el.style.display = 'block';
+  el.innerHTML = renderQuarterCardRow();
+}
+
 function renderPanel(){
   try {
+    renderQuarterCardsContainer();
     let html = '';
     if(S.tab===0)      html = pOverview();
     else if(S.tab===1) html = pMilestones();
@@ -195,8 +209,15 @@ function renderPanel(){
 function render(){ renderTabNav(); renderPanel(); }
 
 window.setTab = function(i){ S.tab=i; render(); };
-window.selectQ = function(qid){ S.selectedQ=qid; S.tab=1; render(); };
-window.selectQDoc = function(qid){ S.selectedQ=qid; loadContentForQ(qid).then(render); };
+// Card click: update quarter selection. Stay di tab aktif (gak auto-switch).
+// Kalau di Docs tab, fetch content untuk quarter baru sebelum re-render.
+window.selectQ = function(qid){
+  S.selectedQ = qid;
+  syncQuarterToStorage(qid);
+  if(S.tab === 2){ loadContentForQ(qid).then(render); }
+  else { render(); }
+};
+window.selectQDoc = window.selectQ; // alias backward-compat
 window.setActiveDoc = function(doc){ S.activeDoc=doc; renderPanel(); };
 
 // ── QUARTER ROW (4 period cards, granularity 3-bulan) ──
@@ -278,8 +299,7 @@ function pOverview(){
   const q  = S.currentQuarter;
   const bc = S.latestBodyComp;
 
-  // ── 0. QUARTER ROW (4 cards) ──
-  const quarterRow = renderQuarterCardRow();
+  // Quarter cards sekarang di-render global di atas tab nav (lihat renderQuarterCardsContainer)
 
   // ── 1. STATUS BAR ──
   const bf    = bc?.bf_pct ?? null;
@@ -441,7 +461,7 @@ function pOverview(){
       </div>
     </div>` : '';
 
-  return quarterRow + statusBar + appLinks + gymHtml + cardioHtml + raceHtml + qProgress;
+  return statusBar + appLinks + gymHtml + cardioHtml + raceHtml + qProgress;
 }
 
 // ── PANEL: MILESTONES ────────────────────────────────────
@@ -535,9 +555,9 @@ function pDocs(){
   const cache = S.contentCache[qid] || {};
   return `
     <div class="doc-sel-row">
-      <select class="doc-qsel" onchange="selectQDoc(this.value)">
-        ${S.quarters.map(q=>`<option value="${q.quarter_id}" ${q.quarter_id===qid?'selected':''}>${q.quarter_id.replace('_',' ')}</option>`).join('')}
-      </select>
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--r);font-size:11px;font-weight:700;color:var(--acc)">
+        📅 ${qid.replace('_',' ')}
+      </div>
       ${DOC_TYPES.map(d=>`
         <button class="doc-btn${S.activeDoc===d?' act':''}" onclick="setActiveDoc('${d}')">${DOC_ICONS[d]} ${d}</button>`).join('')}
     </div>
@@ -674,14 +694,21 @@ function pRaceGoals(){
       }).join('')}
     </div>
     <div class="card">
-      <div class="card-title">📅 Protocol Timeline 2026–2029</div>
-      ${S.quarters.map((q,i)=>`
-        <div class="tl-row">
-          <div class="tl-dot" style="background:${Q_COLORS[i]}"></div>
-          <div class="tl-q">${q.quarter_id.replace('_',' ')}</div>
-          <div class="tl-win">${q.window_raw||''}</div>
-          <div class="tl-bb" style="color:${Q_COLORS[i]}">${q.bb_start||'?'}→${q.bb_end||'?'} kg · ${q.bf_start||'?'}→${q.bf_end||'?'}%</div>
-        </div>`).join('')}
+      <div class="card-title">📅 Protocol Timeline 2026–2030 · ${S.quarterPeriods?.length || 0} quarters</div>
+      ${(S.quarterPeriods||[]).map((p,i)=>{
+        const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
+        const hasBB = p.bb_start_kg != null;
+        const hasBF = p.bf_start_pct != null;
+        const bbStr = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
+        const bfStr = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
+        const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
+        return `<div class="tl-row">
+          <div class="tl-dot" style="background:${color}"></div>
+          <div class="tl-q">${p.label_short}</div>
+          <div class="tl-win">${dateRange}${p.week_start?` · W${p.week_start}-W${p.week_end}`:''}</div>
+          <div class="tl-bb" style="color:${color}">${bbStr} · ${bfStr}</div>
+        </div>`;
+      }).join('')}
     </div>`;
 }
 
