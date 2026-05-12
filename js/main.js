@@ -100,15 +100,20 @@ function buildIndexes(){
 }
 
 // Semester rollup — agregat 2 quarter dalam 1 semester
+// phase_type + window_raw direkonstruksi client-side (kolom DB di-drop di cleanup)
+function fmtDateID(d){ if(!d) return ''; const dt = new Date(d); return dt.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }); }
 function semesterRollup(semId){
   const rows = S.bySemester[semId];
   if(!rows?.length) return null;
   const first = rows[0], last = rows[rows.length-1];
+  const weeks = (last.week_end && first.week_start) ? (last.week_end - first.week_start + 1) : null;
   return {
     quarter_id: semId,
-    phase_type: first.semester_phase_type || '',
-    window_raw: first.semester_window_raw || '',
-    total_weeks: (last.week_end && first.week_start) ? (last.week_end - first.week_start + 1) : null,
+    phase_type: first.focus_roadmap || '',
+    window_raw: (first.date_start && last.date_end)
+                ? `${fmtDateID(first.date_start)} → ${fmtDateID(last.date_end)}${weeks ? ` (${weeks} minggu)` : ''}`
+                : '',
+    total_weeks: weeks,
     bb_start: first.bb_start_kg,
     bb_end:   last.bb_end_kg,
     bf_start: first.bf_start_pct,
@@ -281,7 +286,7 @@ function renderQuarterCardRow(){
     const hasBF = p.bf_start_pct != null;
     const bbRange = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
     const bfRange = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
-    const phase = p.semester_phase_type || p.phase_name || '';
+    const phase = p.focus_roadmap || '';
     const dotColor = hasBB ? 'var(--acc)' : 'var(--t3)';
     const weeks   = (p.week_start && p.week_end) ? `W${p.week_start}–W${p.week_end}` : 'pre-protokol';
     const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
@@ -530,7 +535,7 @@ function pMilestones(){
         const bfStr = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
         const weeks = (p.week_start && p.week_end) ? `W${p.week_start}-W${p.week_end}` : 'pre';
         const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
-        const phase = p.semester_phase_type || p.phase_name || '';
+        const phase = p.focus_roadmap || '';
         const phaseShort = phase ? (phase.length > 90 ? phase.slice(0,87)+'...' : phase) : '';
         const phaseFull = phase.replace(/"/g,'&quot;');
         const focusTags = [
