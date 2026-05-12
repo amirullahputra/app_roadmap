@@ -198,11 +198,63 @@ window.selectQ = function(qid){ S.selectedQ=qid; S.tab=1; render(); };
 window.selectQDoc = function(qid){ S.selectedQ=qid; loadContentForQ(qid).then(render); };
 window.setActiveDoc = function(doc){ S.activeDoc=doc; renderPanel(); };
 
+// ── QUARTER ROW (4-card grid, mirror exercise_fl pattern) ──
+function renderQuarterCardRow(){
+  if(!S.quarters?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading quarters…</div>';
+
+  // Sort chronological: year asc, semester Q1Q2 before Q3Q4
+  const yearOf = qid => parseInt(qid.split('_')[1]) || 9999;
+  const semOf  = qid => qid.startsWith('Q1Q2') ? 1 : 2;
+  const sorted = [...S.quarters].sort((a,b) => {
+    const dy = yearOf(a.quarter_id) - yearOf(b.quarter_id);
+    return dy !== 0 ? dy : semOf(a.quarter_id) - semOf(b.quarter_id);
+  });
+  const visible = sorted.slice(0, 4);
+
+  const cards = visible.map(q => {
+    const sel = S.selectedQ === q.quarter_id;
+    const hasData = q.bb_start != null && q.bb_end != null;
+    const bbRange = hasData ? `${q.bb_start}→${q.bb_end} kg` : '—';
+    const bfRange = (q.bf_start != null && q.bf_end != null) ? `${q.bf_start}→${q.bf_end}%` : '—';
+    const weeks   = q.total_weeks || 26;
+    const wRange  = q.window_raw || '—';
+    const dotColor = hasData ? 'var(--acc)' : 'var(--t3)';
+
+    return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${q.quarter_id}')" style="cursor:pointer">
+      <div class="ph-tag" style="color:${dotColor}">
+        <div class="ph-dot" style="background:${dotColor}"></div>
+        ${q.quarter_id.replace('_',' ')}
+      </div>
+      <div class="ph-name">${q.quarter_id.replace('_',' ')}</div>
+      <div class="ph-desc" style="font-size:10.5px">${weeks} minggu · ${wRange}</div>
+      <div class="ph-grid" style="grid-template-columns:1fr 1fr">
+        <div class="ph-stat">
+          <div class="ph-stat-l">BB Target</div>
+          <div class="ph-stat-v" style="color:${hasData?'var(--acc)':'var(--t3)'};font-size:13px">${bbRange}</div>
+        </div>
+        <div class="ph-stat">
+          <div class="ph-stat-l">BF Target</div>
+          <div class="ph-stat-v" style="color:${hasData?'var(--acc)':'var(--t3)'};font-size:13px">${bfRange}</div>
+        </div>
+        <div class="ph-stat" style="grid-column:1/-1">
+          <div class="ph-stat-l">Phase</div>
+          <div class="ph-stat-v" style="font-size:11px;line-height:1.3">${q.phase_type||'<span style="color:var(--t3)">—</span>'}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">${cards}</div>`;
+}
+
 // ── PANEL: OVERVIEW (Feed-style) ─────────────────────────
 function pOverview(){
   const wk = S.currentWeek;
   const q  = S.currentQuarter;
   const bc = S.latestBodyComp;
+
+  // ── 0. QUARTER ROW (4 cards) ──
+  const quarterRow = renderQuarterCardRow();
 
   // ── 1. STATUS BAR ──
   const bf    = bc?.bf_pct ?? null;
@@ -364,7 +416,7 @@ function pOverview(){
       </div>
     </div>` : '';
 
-  return statusBar + appLinks + gymHtml + cardioHtml + raceHtml + qProgress;
+  return quarterRow + statusBar + appLinks + gymHtml + cardioHtml + raceHtml + qProgress;
 }
 
 // ── PANEL: MILESTONES ────────────────────────────────────
