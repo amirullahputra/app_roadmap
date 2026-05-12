@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-// AMIR'S ROADMAP — Core Hub
+// AMIR'S ROADMAP — Core Hub (master_timeline single source)
 // ══════════════════════════════════════════════════════════
 
 // Global error catcher
@@ -25,14 +25,9 @@ const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 console.log('[roadmap] supa created');
 
 // ── REST FETCH HELPER ──
-// Public reads bypass supa client karena GoTrueClient init bisa hang
-// (lock semantics quirk di incognito / storage-restricted context).
-// Per CLAUDE.md: PUBLIC data reads HARUS pakai plain fetch().
 async function restFetch(table, query=''){
   const url = `${SUPA_URL}/rest/v1/${table}${query?'?'+query:''}`;
-  const res = await fetch(url, {
-    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
-  });
+  const res = await fetch(url, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } });
   if(!res.ok){
     const body = await res.text().catch(()=>'');
     throw new Error(`${table}: HTTP ${res.status} ${body.slice(0,200)}`);
@@ -56,41 +51,31 @@ const DOC_ICONS = { TARGET:'🎯', PEPTIDE:'💉', GYM:'🏋️', CARDIO:'🏃',
 
 const TABS = ['🏠 Overview','📅 Milestones','📄 Docs','📊 Body Comp','🏁 Race Goals'];
 
+// ── STATE: master_timeline single source ──
 const S = {
   tab: 0,
   user: null,
-  quarters: [],          // semester-level (Q3Q4_2026..) — table `quarters`
-  quarterPeriods: [],    // quarter-level (Q3_2026..Q4_2030) — table `quarter_periods`
-  milestones: [],
-  contentCache: {},
+  timeline: [],        // raw rows dari master_timeline (20 row)
+  byPeriod: {},        // {Q3_2026: row, ...}
+  bySemester: {},      // {Q3Q4_2026: [row Q3_2026, row Q4_2026], ...}
   activeDoc: 'TARGET',
-  selectedQ: null,
+  selectedQ: null,     // semester_id (Q3Q4_2026..)
   // live data
   latestBodyComp: null,
   bodyCompLog: [],
-  activeGymSessions: [],   // sesi gym minggu ini
-  activeCardioLog: [],     // cardio minggu ini
-  activePeptides: [],      // dari pep_fl compounds (public)
-  currentQuarter: null,
+  activeGymSessions: [],
+  activeCardioLog: [],
+  currentQuarter: null, // semester rollup object
   currentWeek: 0,
 };
 
 // ── UTILS ──
 function daysUntil(d){ return Math.ceil((new Date(d)-new Date())/(1000*60*60*24)); }
-
-function sortQuarters(arr){
-  return [...arr].sort((a,b)=>{
-    const parse = q => {
-      const m = q.quarter_id.match(/^(Q[13]Q[24])_(\d{4})$/);
-      if(!m) return 0;
-      const year = parseInt(m[2]);
-      const half = m[1].startsWith('Q1') ? 0 : 1;
-      return year * 10 + half;
-    };
-    return parse(a) - parse(b);
-  });
-}
 function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); }
+function fmtMonthShort(dateStr){
+  if(!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('id-ID', { month:'short', year:'2-digit' });
+}
 function getWeekNum(){
   const now = new Date(), start = new Date('2026-07-06');
   const diff = Math.floor((now-start)/(1000*60*60*24));
@@ -104,6 +89,75 @@ function getWeekStart(){
   return mon.toISOString().split('T')[0];
 }
 
+// ── DERIVATIONS from master_timeline ──
+function buildIndexes(){
+  S.byPeriod   = Object.fromEntries(S.timeline.map(r => [r.period_id, r]));
+  S.bySemester = {};
+  for(const r of S.timeline){
+    if(!r.semester_id) continue;
+    (S.bySemester[r.semester_id] ||= []).push(r);
+  }
+}
+
+// Semester rollup — agregat 2 quarter dalam 1 semester
+function semesterRollup(semId){
+  const rows = S.bySemester[semId];
+  if(!rows?.length) return null;
+  const first = rows[0], last = rows[rows.length-1];
+  return {
+    quarter_id: semId,
+    phase_type: first.semester_phase_type || '',
+    window_raw: first.semester_window_raw || '',
+    total_weeks: (last.week_end && first.week_start) ? (last.week_end - first.week_start + 1) : null,
+    bb_start: first.bb_start_kg,
+    bb_end:   last.bb_end_kg,
+    bf_start: first.bf_start_pct,
+    bf_end:   last.bf_end_pct,
+  };
+}
+
+function getAllSemesterIds(){
+  // preserve insertion order (sort_order udah ascending dari fetch)
+  return Object.keys(S.bySemester);
+}
+
+// Parse pipe-separated milestone fields jadi array of milestone objects
+function parseMilestones(row){
+  if(!row || !row.milestone_week_labels) return [];
+  const wk   = row.milestone_week_labels.split('|');
+  const dr   = (row.milestone_date_ranges || '').split('|');
+  const bb   = (row.milestone_bb_targets  || '').split('|');
+  const bf   = (row.milestone_bf_targets  || '').split('|');
+  const lab  = (row.milestone_lab_tests   || '').split('|');
+  const note = (row.milestone_notes       || '').split('|');
+  return wk.filter(w => w.trim()).map((w, i) => ({
+    week_label: w.trim(),
+    date_range: (dr[i]||'').trim(),
+    bb_target:  (bb[i]||'').trim(),
+    bf_target:  (bf[i]||'').trim(),
+    lab_tests:  (lab[i]||'').trim(),
+    note:       (note[i]||'').trim(),
+  }));
+}
+
+// Aggregate milestones across all periods di 1 semester
+function getMilestonesForSemester(semId){
+  const rows = S.bySemester[semId] || [];
+  const all = rows.flatMap(r => parseMilestones(r).map(m => ({...m, period_id: r.period_id})));
+  return all.sort((a,b) => (parseInt(String(a.week_label).replace(/\D/g,''))||0) - (parseInt(String(b.week_label).replace(/\D/g,''))||0));
+}
+
+// Get Markdown doc content — try period match dulu, fallback ke semester
+function getDocContent(qid, docType){
+  const col = 'content_' + docType.toLowerCase() + '_md';
+  let row = S.byPeriod[qid];
+  if(!row){
+    const rows = S.bySemester[qid] || [];
+    row = rows.find(r => r[col]) || rows[0];
+  }
+  return row?.[col] || '';
+}
+
 // ── MARKDOWN ──
 function renderMd(md){
   if(!md) return `<div class="empty-state"><div class="empty-ico">📄</div><div class="empty-txt">Belum ada konten untuk quarter ini.</div></div>`;
@@ -111,11 +165,8 @@ function renderMd(md){
     const lines = md.split('\n');
     let html = '';
     let i = 0;
-
     while(i < lines.length){
       const line = lines[i];
-
-      // Table
       if(/^\|.+\|/.test(line)){
         let tableLines = [];
         while(i < lines.length && /^\|/.test(lines[i])){ tableLines.push(lines[i]); i++; }
@@ -150,12 +201,11 @@ function renderMd(md){
         para.push(lines[i]); i++;
       }
       if(para.length) html += `<p>${renderInline(para.join(' '))}</p>`;
-      else i++; // fallback: skip unmatched line to prevent infinite loop
+      else i++;
     }
     return html;
   } catch(e) {
     console.error('renderMd error:', e);
-    // Fallback: render as preformatted text
     return `<pre style="white-space:pre-wrap;font-size:12px;color:var(--t1)">${md.replace(/</g,'&lt;')}</pre>`;
   }
 }
@@ -178,12 +228,7 @@ function renderTabNav(){
 function renderQuarterCardsContainer(){
   const el = document.getElementById('quarter-cards-row');
   if(!el) return;
-  // Milestones tab (index 1): hide cards — tab itu sudah all-view via Full Timeline section
-  if(S.tab === 1){
-    el.style.display = 'none';
-    el.innerHTML = '';
-    return;
-  }
+  if(S.tab === 1){ el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'block';
   el.innerHTML = renderQuarterCardRow();
 }
@@ -197,7 +242,6 @@ function renderPanel(){
     else if(S.tab===2) html = pDocs();
     else if(S.tab===3) html = pBodyComp();
     else               html = pRaceGoals();
-    console.log('[roadmap] renderPanel html len=', html.length, 'tab=', S.tab);
     document.getElementById('panels-root').innerHTML = html;
   } catch(e) {
     console.error('renderPanel error:', e);
@@ -209,43 +253,27 @@ function renderPanel(){
 function render(){ renderTabNav(); renderPanel(); }
 
 window.setTab = function(i){ S.tab=i; render(); };
-// Card click: update quarter selection. Stay di tab aktif (gak auto-switch).
-// Kalau di Docs tab, fetch content untuk quarter baru sebelum re-render.
 window.selectQ = function(qid){
   S.selectedQ = qid;
   try { localStorage.setItem('vhm.activeSemester', qid); } catch(e){}
-  if(S.tab === 2){ loadContentForQ(qid).then(render); }
-  else { render(); }
+  render();
 };
-window.selectQDoc = window.selectQ; // alias backward-compat
+window.selectQDoc = window.selectQ;
 window.setActiveDoc = function(doc){ S.activeDoc=doc; renderPanel(); };
 
-// ── QUARTER ROW (4 period cards, granularity 3-bulan) ──
-// Fetch dari table quarter_periods (single source of truth, narrative per quarter).
-// Default tampilkan 4 quarter berurutan mulai dari current quarter (atau Q3_2026).
-
-function fmtMonthShort(dateStr){
-  if(!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('id-ID', { month:'short', year:'2-digit' });
-}
-
+// ── QUARTER CARD ROW (4 period cards dari master_timeline) ──
 function pickActivePeriodIdx(periods){
-  // Cari current quarter berdasarkan today, atau anchor Q3_2026 kalau belum mulai
   const today = new Date();
   const idx = periods.findIndex(p => today >= new Date(p.date_start) && today <= new Date(p.date_end));
   if(idx >= 0) return idx;
-  // Pre-protocol → anchor Q3_2026 (sort_order = 3)
-  return periods.findIndex(p => p.period_id === 'Q3_2026') || 0;
+  return Math.max(0, periods.findIndex(p => p.period_id === 'Q3_2026'));
 }
 
 function renderQuarterCardRow(){
-  if(!S.quarterPeriods?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading periods…</div>';
-
-  // Pilih 4 quarter berurutan mulai dari aktif (current → +3)
-  const activeIdx = pickActivePeriodIdx(S.quarterPeriods);
-  const startIdx  = Math.max(0, Math.min(activeIdx, S.quarterPeriods.length - 4));
-  const visible   = S.quarterPeriods.slice(startIdx, startIdx + 4);
+  if(!S.timeline?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading periods…</div>';
+  const activeIdx = pickActivePeriodIdx(S.timeline);
+  const startIdx  = Math.max(0, Math.min(activeIdx, S.timeline.length - 4));
+  const visible   = S.timeline.slice(startIdx, startIdx + 4);
 
   const cards = visible.map(p => {
     const sel = S.selectedQ === p.semester_id;
@@ -253,13 +281,11 @@ function renderQuarterCardRow(){
     const hasBF = p.bf_start_pct != null;
     const bbRange = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
     const bfRange = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
-    const phase   = p.phase_type || null;
+    const phase = p.semester_phase_type || p.phase_name || '';
     const dotColor = hasBB ? 'var(--acc)' : 'var(--t3)';
     const weeks   = (p.week_start && p.week_end) ? `W${p.week_start}–W${p.week_end}` : 'pre-protokol';
     const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
     const semLabel = p.semester_id ? p.semester_id.replace('_',' ') : '—';
-
-    // Phase narrative bisa panjang — truncate dengan tooltip
     const phaseShort = phase ? (phase.length > 70 ? phase.slice(0, 67) + '...' : phase) : '';
 
     return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${p.semester_id || p.period_id}')" style="cursor:pointer">
@@ -270,14 +296,8 @@ function renderQuarterCardRow(){
       <div class="ph-name">${p.label_short}</div>
       <div class="ph-desc" style="font-size:10.5px">${weeks} · ${dateRange} · <span style="color:var(--t3)">${semLabel}</span></div>
       <div class="ph-grid" style="grid-template-columns:1fr 1fr">
-        <div class="ph-stat">
-          <div class="ph-stat-l">BB Target</div>
-          <div class="ph-stat-v" style="color:${hasBB?'var(--acc)':'var(--t3)'};font-size:13px">${bbRange}</div>
-        </div>
-        <div class="ph-stat">
-          <div class="ph-stat-l">BF Target</div>
-          <div class="ph-stat-v" style="color:${hasBF?'var(--acc)':'var(--t3)'};font-size:13px">${bfRange}</div>
-        </div>
+        <div class="ph-stat"><div class="ph-stat-l">BB Target</div><div class="ph-stat-v" style="color:${hasBB?'var(--acc)':'var(--t3)'};font-size:13px">${bbRange}</div></div>
+        <div class="ph-stat"><div class="ph-stat-l">BF Target</div><div class="ph-stat-v" style="color:${hasBF?'var(--acc)':'var(--t3)'};font-size:13px">${bfRange}</div></div>
         <div class="ph-stat" style="grid-column:1/-1">
           <div class="ph-stat-l">Phase</div>
           <div class="ph-stat-v" style="font-size:11px;line-height:1.35" title="${(phase||'').replace(/"/g,'&quot;')}">${phaseShort || '<span style="color:var(--t3)">—</span>'}</div>
@@ -293,21 +313,15 @@ function renderQuarterCardRow(){
   return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">${cards}</div>`;
 }
 
-// ── PANEL: OVERVIEW (Feed-style) ─────────────────────────
+// ── PANEL: OVERVIEW ──
 function pOverview(){
   const wk = S.currentWeek;
   const q  = S.currentQuarter;
   const bc = S.latestBodyComp;
 
-  // Quarter cards sekarang di-render global di atas tab nav (lihat renderQuarterCardsContainer)
-
-  // ── 1. STATUS BAR ──
   const bf    = bc?.bf_pct ?? null;
   const lbm   = bc?.lbm_kg ?? null;
   const bb    = bc?.weight_kg ?? null;
-  const bfOk  = bf !== null && bf >= TARGET_BF_LO && bf <= TARGET_BF_HI;
-  const lbmOk = lbm !== null && lbm >= TARGET_LBM;
-
   const bfColor  = bf===null ? 'var(--t3)' : bf<=TARGET_BF_LO ? 'var(--f3)' : bf<=TARGET_BF_HI ? 'var(--acc)' : 'var(--warn)';
   const lbmColor = lbm===null ? 'var(--t3)' : lbm>=TARGET_LBM ? 'var(--f3)' : 'var(--f2)';
 
@@ -339,7 +353,6 @@ function pOverview(){
       ${!S.user ? `<div style="font-size:11px;color:var(--t3);margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--bdr)">💡 Login untuk melihat data body comp aktual kamu</div>` : ''}
     </div>`;
 
-  // ── 2. APP LINKS ──
   const appLinks = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.75rem">
       <a href="${APP_PEP}" target="_blank" style="text-decoration:none">
@@ -360,7 +373,6 @@ function pOverview(){
       </a>
     </div>`;
 
-  // ── 3. GYM MINGGU INI ──
   const gymSessions = S.activeGymSessions;
   const gymHtml = `
     <div class="card" style="margin-bottom:.75rem">
@@ -386,13 +398,11 @@ function pOverview(){
       }
     </div>`;
 
-  // ── 4. CARDIO MINGGU INI ──
   const cardioLog = S.activeCardioLog;
   const totalMin  = cardioLog.reduce((a,r)=>a+(r.duration_min||0),0);
   const totalKm   = cardioLog.reduce((a,r)=>a+parseFloat(r.distance_km||0),0);
   const z1Count   = cardioLog.filter(r=>r.zone==='Z1').length;
   const z2Count   = cardioLog.filter(r=>r.zone==='Z2').length;
-
   const cardioHtml = `
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title" style="justify-content:space-between">
@@ -415,13 +425,11 @@ function pOverview(){
       }
     </div>`;
 
-  // ── 5. RACE COUNTDOWN ──
   const raceHtml = `
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title">🏁 Race Countdown</div>
       ${RACES.map(r=>{
         const days = daysUntil(r.date);
-        const pct  = Math.max(0, Math.min(100, Math.round((1 - days/1200)*100)));
         return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--bdr)">
           <div style="font-size:1.5rem">${r.icon}</div>
           <div style="flex:1">
@@ -435,7 +443,6 @@ function pOverview(){
       }).join('')}
     </div>`;
 
-  // ── 6. QUARTER PROGRESS ──
   const qProgress = q ? `
     <div class="card">
       <div class="card-title">📋 Quarter Aktif: ${q.quarter_id.replace('_',' ')}</div>
@@ -443,56 +450,44 @@ function pOverview(){
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:.875rem">
         <div style="background:var(--bg2);border-radius:var(--r);padding:.625rem .75rem;border:1px solid var(--bdr)">
           <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">BB Target</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--t0);margin-top:2px">${q.bb_start} → ${q.bb_end} kg</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--t0);margin-top:2px">${q.bb_start??'?'} → ${q.bb_end??'?'} kg</div>
         </div>
         <div style="background:var(--bg2);border-radius:var(--r);padding:.625rem .75rem;border:1px solid var(--bdr)">
           <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">BF% Target</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--f3);margin-top:2px">${q.bf_start} → ${q.bf_end}%</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--f3);margin-top:2px">${q.bf_start??'?'} → ${q.bf_end??'?'}%</div>
         </div>
       </div>
+      ${q.total_weeks ? `
       <div style="font-size:10px;color:var(--t2);margin-bottom:5px">Progress W${wk} dari ${q.total_weeks} weeks</div>
-      <div class="ph-bar">
-        <div class="ph-bar-fill" style="width:${Math.round((wk/q.total_weeks)*100)}%;background:var(--acc)"></div>
-      </div>
+      <div class="ph-bar"><div class="ph-bar-fill" style="width:${Math.round((wk/q.total_weeks)*100)}%;background:var(--acc)"></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:4px">
         <span style="font-size:9px;color:var(--t3)">W1</span>
         <span style="font-size:9px;color:var(--acc);font-weight:700">${Math.round((wk/q.total_weeks)*100)}%</span>
         <span style="font-size:9px;color:var(--t3)">W${q.total_weeks}</span>
-      </div>
+      </div>` : ''}
     </div>` : '';
 
-  // Checkpoints untuk quarter terpilih (semester format)
   const selectedQid = S.selectedQ || S.currentQuarter?.quarter_id;
   const checkpointsHtml = selectedQid ? renderCheckpoints(selectedQid) : '';
 
   return statusBar + checkpointsHtml + appLinks + gymHtml + cardioHtml + raceHtml + qProgress;
 }
 
-// ── CHECKPOINTS RENDERER (shared, dipakai di Overview) ──
-// Filter by quarter_id (semester format), sort numeric by week number.
-function renderCheckpoints(quarterId){
-  if(!quarterId) return '';
-  const ms = (S.milestones||[])
-    .filter(m => m.quarter_id === quarterId)
-    .slice()
-    .sort((a,b) => {
-      const wa = parseInt(String(a.week_label).replace(/\D/g,'')) || 0;
-      const wb = parseInt(String(b.week_label).replace(/\D/g,'')) || 0;
-      return wa - wb;
-    });
-
+// ── CHECKPOINTS — milestones parsed dari master_timeline.milestone_* fields ──
+function renderCheckpoints(semId){
+  if(!semId) return '';
+  const ms = getMilestonesForSemester(semId);
   if(!ms.length){
     return `<div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">📍 Checkpoints — ${quarterId.replace('_',' ')}</div>
+      <div class="card-title">📍 Checkpoints — ${semId.replace('_',' ')}</div>
       <div class="empty-state" style="padding:1.5rem 1rem">
         <div class="empty-ico">📍</div>
         <div class="empty-txt">Belum ada checkpoint data untuk quarter ini</div>
       </div>
     </div>`;
   }
-
   return `<div class="card" style="margin-bottom:.75rem">
-    <div class="card-title">📍 Checkpoints — ${quarterId.replace('_',' ')} · ${ms.length} milestone</div>
+    <div class="card-title">📍 Checkpoints — ${semId.replace('_',' ')} · ${ms.length} milestone</div>
     ${ms.map((m,i)=>`
       <div class="ms-row">
         <div class="ms-dot" style="background:hsl(${200+i*25},65%,55%)"></div>
@@ -508,34 +503,36 @@ function renderCheckpoints(quarterId){
   </div>`;
 }
 
-// ── PANEL: MILESTONES ────────────────────────────────────
+// ── PANEL: MILESTONES ──
 function pMilestones(){
-  const q = S.quarters.find(x=>x.quarter_id===S.selectedQ) || S.quarters[0];
+  const semId = S.selectedQ || getAllSemesterIds()[0];
+  const q = semId ? semesterRollup(semId) : null;
   if(!q) return `<div class="card"><div class="empty-state"><div class="empty-ico">📍</div><div class="empty-txt">Data belum tersedia</div></div></div>`;
 
   return `
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title">📋 ${q.quarter_id.replace('_',' ')} — ${q.window_raw||''}</div>
       <div class="vial-summary-strip" style="margin-bottom:0">
-        <div class="vs-card"><div class="vs-l">BB Start</div><div class="vs-v">${q.bb_start||'?'}<span style="font-size:13px"> kg</span></div></div>
-        <div class="vs-card"><div class="vs-l">BB Target</div><div class="vs-v" style="color:var(--f2)">${q.bb_end||'?'}<span style="font-size:13px"> kg</span></div></div>
-        <div class="vs-card"><div class="vs-l">BF Start</div><div class="vs-v">${q.bf_start||'?'}<span style="font-size:13px">%</span></div></div>
-        <div class="vs-card"><div class="vs-l">BF Target</div><div class="vs-v" style="color:var(--f3)">${q.bf_end||'?'}<span style="font-size:13px">%</span></div></div>
+        <div class="vs-card"><div class="vs-l">BB Start</div><div class="vs-v">${q.bb_start??'?'}<span style="font-size:13px"> kg</span></div></div>
+        <div class="vs-card"><div class="vs-l">BB Target</div><div class="vs-v" style="color:var(--f2)">${q.bb_end??'?'}<span style="font-size:13px"> kg</span></div></div>
+        <div class="vs-card"><div class="vs-l">BF Start</div><div class="vs-v">${q.bf_start??'?'}<span style="font-size:13px">%</span></div></div>
+        <div class="vs-card"><div class="vs-l">BF Target</div><div class="vs-v" style="color:var(--f3)">${q.bf_end??'?'}<span style="font-size:13px">%</span></div></div>
       </div>
     </div>
     <div class="card">
-      <div class="card-title">🗓️ Full Quarter Timeline 2026–2030 · ${S.quarterPeriods?.length || 0} quarters</div>
-      ${(S.quarterPeriods||[]).map((p,i)=>{
+      <div class="card-title">🗓️ Full Quarter Timeline 2026–2030 · ${S.timeline?.length || 0} quarters</div>
+      ${(S.timeline||[]).map((p,i)=>{
         const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
-        const yearChange = i > 0 && p.year !== S.quarterPeriods[i-1].year;
+        const yearChange = i > 0 && p.year !== S.timeline[i-1].year;
         const hasBB = p.bb_start_kg != null;
         const hasBF = p.bf_start_pct != null;
         const bbStr = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
         const bfStr = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
         const weeks = (p.week_start && p.week_end) ? `W${p.week_start}-W${p.week_end}` : 'pre';
         const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
-        const phaseShort = p.phase_type ? (p.phase_type.length > 90 ? p.phase_type.slice(0,87)+'...' : p.phase_type) : '';
-        const phaseFull = (p.phase_type||'').replace(/"/g,'&quot;');
+        const phase = p.semester_phase_type || p.phase_name || '';
+        const phaseShort = phase ? (phase.length > 90 ? phase.slice(0,87)+'...' : phase) : '';
+        const phaseFull = phase.replace(/"/g,'&quot;');
         const focusTags = [
           p.focus_roadmap && `<span style="background:var(--acc-bg);color:var(--acc);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">${p.focus_roadmap}</span>`,
           p.focus_pep && `<span style="background:var(--f1-bg);color:var(--f1);padding:2px 7px;border-radius:10px;font-size:10px">💉 ${p.focus_pep}</span>`,
@@ -561,19 +558,11 @@ function pMilestones(){
     </div>`;
 }
 
-// ── PANEL: DOCS ──────────────────────────────────────────
-async function loadContentForQ(qid){
-  if(S.contentCache[qid]) return;
-  // Public read via restFetch (bypass GoTrueClient hang quirk)
-  const data = await restFetch('quarter_content', `select=doc_type,content_md&quarter_id=eq.${encodeURIComponent(qid)}`);
-  S.contentCache[qid] = {};
-  if(data) data.forEach(r=>{ S.contentCache[qid][r.doc_type]=r.content_md; });
-}
-
+// ── PANEL: DOCS — content langsung dari master_timeline (no lazy fetch) ──
 function pDocs(){
-  const qid = S.selectedQ || S.quarters[0]?.quarter_id;
+  const qid = S.selectedQ || getAllSemesterIds()[0];
   if(!qid) return `<div class="card"><div class="empty-state"><div class="empty-ico">📄</div><div>Loading...</div></div></div>`;
-  const cache = S.contentCache[qid] || {};
+  const content = getDocContent(qid, S.activeDoc);
   return `
     <div class="doc-sel-row">
       <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--r);font-size:11px;font-weight:700;color:var(--acc)">
@@ -582,10 +571,10 @@ function pDocs(){
       ${DOC_TYPES.map(d=>`
         <button class="doc-btn${S.activeDoc===d?' act':''}" onclick="setActiveDoc('${d}')">${DOC_ICONS[d]} ${d}</button>`).join('')}
     </div>
-    <div class="card"><div class="md-content">${renderMd(cache[S.activeDoc])}</div></div>`;
+    <div class="card"><div class="md-content">${renderMd(content)}</div></div>`;
 }
 
-// ── PANEL: BODY COMP ─────────────────────────────────────
+// ── PANEL: BODY COMP ──
 function pBodyComp(){
   if(!S.user) return `
     <div class="card">
@@ -597,7 +586,6 @@ function pBodyComp(){
   const last = log.length ? log[log.length-1] : null;
   const today = new Date().toISOString().split('T')[0];
 
-  // ── progress cards ──
   const statsHtml = last ? `
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title">📍 Kondisi Terakhir <span style="font-size:9px;font-weight:600;color:var(--t3);margin-left:4px">${fmtDate(last.logged_date)}</span></div>
@@ -632,35 +620,22 @@ function pBodyComp(){
       })() : ''}
     </div>` : '';
 
-  // ── input form ──
   const formHtml = `
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title">➕ Input Data Baru</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:.875rem">
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">TANGGAL</div>
-          <input class="form-inp" type="date" id="bc-date" value="${today}" style="width:100%">
-        </div>
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">BODY WEIGHT (kg)</div>
-          <input class="form-inp" type="number" id="bc-bb" step="0.1" min="30" max="200" placeholder="misal: 79.5" style="width:100%" oninput="bcAutoLBM()">
-        </div>
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">BODY FAT %</div>
-          <input class="form-inp" type="number" id="bc-bf" step="0.1" min="3" max="60" placeholder="misal: 22.5" style="width:100%" oninput="bcAutoLBM()">
-        </div>
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">LEAN MASS (kg) <span style="font-weight:400;color:var(--t3);font-size:9px">auto</span></div>
-          <input class="form-inp" type="number" id="bc-lbm" step="0.1" min="20" max="150" placeholder="auto dari BB×BF" style="width:100%">
-        </div>
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">PINGGANG (cm)</div>
-          <input class="form-inp" type="number" id="bc-waist" step="0.5" min="50" max="150" placeholder="opsional" style="width:100%">
-        </div>
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">NOTES</div>
-          <input class="form-inp" type="text" id="bc-notes" placeholder="opsional..." style="width:100%">
-        </div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">TANGGAL</div>
+          <input class="form-inp" type="date" id="bc-date" value="${today}" style="width:100%"></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">BODY WEIGHT (kg)</div>
+          <input class="form-inp" type="number" id="bc-bb" step="0.1" min="30" max="200" placeholder="misal: 79.5" style="width:100%" oninput="bcAutoLBM()"></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">BODY FAT %</div>
+          <input class="form-inp" type="number" id="bc-bf" step="0.1" min="3" max="60" placeholder="misal: 22.5" style="width:100%" oninput="bcAutoLBM()"></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">LEAN MASS (kg) <span style="font-weight:400;color:var(--t3);font-size:9px">auto</span></div>
+          <input class="form-inp" type="number" id="bc-lbm" step="0.1" min="20" max="150" placeholder="auto dari BB×BF" style="width:100%"></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">PINGGANG (cm)</div>
+          <input class="form-inp" type="number" id="bc-waist" step="0.5" min="50" max="150" placeholder="opsional" style="width:100%"></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">NOTES</div>
+          <input class="form-inp" type="text" id="bc-notes" placeholder="opsional..." style="width:100%"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button onclick="submitBodyComp()" style="padding:8px 18px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">💾 Simpan</button>
@@ -668,7 +643,6 @@ function pBodyComp(){
       </div>
     </div>`;
 
-  // ── history table ──
   const histHtml = log.length ? `
     <div class="card">
       <div class="card-title">📅 Riwayat Lengkap <span style="font-size:10px;font-weight:600;color:var(--t3);margin-left:4px">${log.length} entri</span></div>
@@ -695,7 +669,7 @@ function pBodyComp(){
   return statsHtml + formHtml + histHtml;
 }
 
-// ── PANEL: RACE GOALS ────────────────────────────────────
+// ── PANEL: RACE GOALS ──
 function pRaceGoals(){
   return `
     <div class="card" style="margin-bottom:.75rem">
@@ -715,8 +689,8 @@ function pRaceGoals(){
       }).join('')}
     </div>
     <div class="card">
-      <div class="card-title">📅 Protocol Timeline 2026–2030 · ${S.quarterPeriods?.length || 0} quarters</div>
-      ${(S.quarterPeriods||[]).map((p,i)=>{
+      <div class="card-title">📅 Protocol Timeline 2026–2030 · ${S.timeline?.length || 0} quarters</div>
+      ${(S.timeline||[]).map((p,i)=>{
         const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
         const hasBB = p.bb_start_kg != null;
         const hasBF = p.bf_start_pct != null;
@@ -733,14 +707,12 @@ function pRaceGoals(){
     </div>`;
 }
 
-// ── BODY COMP ACTIONS ────────────────────────────────────
+// ── BODY COMP ACTIONS ──
 window.bcAutoLBM = function(){
   const bb = parseFloat(document.getElementById('bc-bb')?.value);
   const bf = parseFloat(document.getElementById('bc-bf')?.value);
   const lbmEl = document.getElementById('bc-lbm');
-  if(lbmEl && bb > 0 && bf > 0){
-    lbmEl.value = (bb * (1 - bf/100)).toFixed(1);
-  }
+  if(lbmEl && bb > 0 && bf > 0) lbmEl.value = (bb * (1 - bf/100)).toFixed(1);
 };
 
 window.submitBodyComp = async function(){
@@ -761,7 +733,6 @@ window.submitBodyComp = async function(){
   }, { onConflict: 'user_id,logged_date' });
   if(error){ msg.textContent='Error: '+error.message; msg.style.color='var(--warn)'; return; }
   msg.textContent='✓ Tersimpan!'; msg.style.color='var(--f3)';
-  // reload
   const { data } = await supa.from('body_comp_log')
     .select('id,logged_date,week_num,weight_kg,bf_pct,lbm_kg,waist_cm,notes')
     .eq('user_id', S.user.id).order('logged_date', { ascending:true });
@@ -816,33 +787,28 @@ document.getElementById('auth-pass')?.addEventListener('keydown',e=>{ if(e.key==
   console.log('[roadmap] init start');
   document.getElementById('panels-root').innerHTML = '<div style="padding:1rem;color:grey;font-size:12px">Loading…</div>';
 
-  // Load quarters + milestones + quarter_periods (via restFetch — public reads)
-  console.log('[roadmap] fetching public data via REST...');
+  // 1 fetch ke master_timeline (single source of truth)
   try {
-    const [d1, d2, d3] = await Promise.all([
-      restFetch('quarters', 'select=quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end'),
-      restFetch('quarter_milestones', 'select=quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note&order=week_label.asc'),
-      restFetch('quarter_periods', 'select=*&order=sort_order.asc')
-    ]);
-    console.log('[roadmap] quarters:', d1.length, 'milestones:', d2.length, 'periods:', d3.length);
-    S.quarters       = sortQuarters(d1);
-    S.milestones     = d2;
-    S.quarterPeriods = d3;
-  } catch(e){ console.error('[roadmap] init load threw:', e); S.quarters=[]; S.milestones=[]; S.quarterPeriods=[]; }
-
-  console.log('[roadmap] S.quarters.length=', S.quarters.length);
-
-  // Determine current quarter & week
-  S.currentWeek = getWeekNum();
-  S.currentQuarter = S.quarters[0] || null;
-
-  if(S.quarters.length){
-    S.selectedQ = S.quarters[0].quarter_id;
-    console.log('[roadmap] loading content for', S.selectedQ);
-    try { await loadContentForQ(S.selectedQ); } catch(e){ console.error('[roadmap] loadContent threw:', e); }
+    S.timeline = await restFetch('master_timeline', 'select=*&order=sort_order.asc');
+    console.log('[roadmap] master_timeline rows:', S.timeline.length);
+    buildIndexes();
+  } catch(e){
+    console.error('[roadmap] init load threw:', e);
+    S.timeline = []; S.byPeriod = {}; S.bySemester = {};
   }
 
-  // Auth listener — load live data on login
+  S.currentWeek = getWeekNum();
+  // Pilih semester aktif sebagai default selectedQ
+  const semIds = getAllSemesterIds();
+  if(semIds.length){
+    // Cari semester dari period yg current today, fallback first
+    const today = new Date();
+    const active = S.timeline.find(p => today >= new Date(p.date_start) && today <= new Date(p.date_end));
+    S.selectedQ = active?.semester_id || semIds[0];
+    S.currentQuarter = semesterRollup(S.selectedQ);
+  }
+
+  // Auth listener
   supa.auth.onAuthStateChange(async(event, session)=>{
     S.user = session?.user || null;
     updateAuthUI(S.user);
@@ -878,7 +844,6 @@ document.getElementById('auth-pass')?.addEventListener('keydown',e=>{ if(e.key==
     render();
   });
 
-  console.log('[roadmap] calling render(), S.quarters=', S.quarters.length);
   render();
-  console.log('[roadmap] render done, panels-root len=', document.getElementById('panels-root').innerHTML.length);
+  console.log('[roadmap] render done');
 })();
