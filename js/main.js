@@ -59,7 +59,8 @@ const TABS = ['🏠 Overview','📅 Milestones','📄 Docs','📊 Body Comp','�
 const S = {
   tab: 0,
   user: null,
-  quarters: [],
+  quarters: [],          // semester-level (Q3Q4_2026..) — table `quarters`
+  quarterPeriods: [],    // quarter-level (Q3_2026..Q4_2030) — table `quarter_periods`
   milestones: [],
   contentCache: {},
   activeDoc: 'TARGET',
@@ -199,46 +200,54 @@ window.selectQDoc = function(qid){ S.selectedQ=qid; loadContentForQ(qid).then(re
 window.setActiveDoc = function(doc){ S.activeDoc=doc; renderPanel(); };
 
 // ── QUARTER ROW (4 period cards, granularity 3-bulan) ──
-// Tampilan: Q3 2026, Q4 2026, Q1 2027, Q2 2027.
-// Data BB/BF interpolasi linear (midpoint) dari parent semester.
-const PERIODS = [
-  { period_id:'Q3_2026', semester_id:'Q3Q4_2026', half:'first',  label:'Q3 2026', dateRange:'Jul – Sep 2026' },
-  { period_id:'Q4_2026', semester_id:'Q3Q4_2026', half:'second', label:'Q4 2026', dateRange:'Okt – Des 2026' },
-  { period_id:'Q1_2027', semester_id:'Q1Q2_2027', half:'first',  label:'Q1 2027', dateRange:'Jan – Mar 2027' },
-  { period_id:'Q2_2027', semester_id:'Q1Q2_2027', half:'second', label:'Q2 2027', dateRange:'Apr – Jun 2027' },
-];
+// Fetch dari table quarter_periods (single source of truth, narrative per quarter).
+// Default tampilkan 4 quarter berurutan mulai dari current quarter (atau Q3_2026).
 
-// Interpolasi midpoint: semester start→end, first half = start→mid, second half = mid→end
-function splitRange(s, e, half){
-  if(s==null || e==null) return [null,null];
-  const mid = +((s + e) / 2).toFixed(1);
-  return half === 'first' ? [s, mid] : [mid, e];
+function fmtMonthShort(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('id-ID', { month:'short', year:'2-digit' });
+}
+
+function pickActivePeriodIdx(periods){
+  // Cari current quarter berdasarkan today, atau anchor Q3_2026 kalau belum mulai
+  const today = new Date();
+  const idx = periods.findIndex(p => today >= new Date(p.date_start) && today <= new Date(p.date_end));
+  if(idx >= 0) return idx;
+  // Pre-protocol → anchor Q3_2026 (sort_order = 3)
+  return periods.findIndex(p => p.period_id === 'Q3_2026') || 0;
 }
 
 function renderQuarterCardRow(){
-  if(!S.quarters?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading periods…</div>';
+  if(!S.quarterPeriods?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading periods…</div>';
 
-  const semMap = Object.fromEntries(S.quarters.map(q => [q.quarter_id, q]));
+  // Pilih 4 quarter berurutan mulai dari aktif (current → +3)
+  const activeIdx = pickActivePeriodIdx(S.quarterPeriods);
+  const startIdx  = Math.max(0, Math.min(activeIdx, S.quarterPeriods.length - 4));
+  const visible   = S.quarterPeriods.slice(startIdx, startIdx + 4);
 
-  const cards = PERIODS.map(p => {
-    const sem = semMap[p.semester_id];
+  const cards = visible.map(p => {
     const sel = S.selectedQ === p.semester_id;
-    const [bbS, bbE] = splitRange(sem?.bb_start, sem?.bb_end, p.half);
-    const [bfS, bfE] = splitRange(sem?.bf_start, sem?.bf_end, p.half);
-    const hasBB = bbS != null;
-    const hasBF = bfS != null;
-    const bbRange = hasBB ? `${bbS}→${bbE} kg` : '—';
-    const bfRange = hasBF ? `${bfS}→${bfE}%` : '—';
-    const phase   = sem?.phase_type || null;
+    const hasBB = p.bb_start_kg != null;
+    const hasBF = p.bf_start_pct != null;
+    const bbRange = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
+    const bfRange = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
+    const phase   = p.phase_type || null;
     const dotColor = hasBB ? 'var(--acc)' : 'var(--t3)';
+    const weeks   = (p.week_start && p.week_end) ? `W${p.week_start}–W${p.week_end}` : 'pre-protokol';
+    const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
+    const semLabel = p.semester_id ? p.semester_id.replace('_',' ') : '—';
 
-    return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${p.semester_id}')" style="cursor:pointer">
+    // Phase narrative bisa panjang — truncate dengan tooltip
+    const phaseShort = phase ? (phase.length > 70 ? phase.slice(0, 67) + '...' : phase) : '';
+
+    return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${p.semester_id || p.period_id}')" style="cursor:pointer">
       <div class="ph-tag" style="color:${dotColor}">
         <div class="ph-dot" style="background:${dotColor}"></div>
-        ${p.label}
+        ${p.label_short}
       </div>
-      <div class="ph-name">${p.label}</div>
-      <div class="ph-desc" style="font-size:10.5px">13 minggu · ${p.dateRange} · <span style="color:var(--t3)">${p.semester_id.replace('_',' ')}</span></div>
+      <div class="ph-name">${p.label_short}</div>
+      <div class="ph-desc" style="font-size:10.5px">${weeks} · ${dateRange} · <span style="color:var(--t3)">${semLabel}</span></div>
       <div class="ph-grid" style="grid-template-columns:1fr 1fr">
         <div class="ph-stat">
           <div class="ph-stat-l">BB Target</div>
@@ -250,8 +259,12 @@ function renderQuarterCardRow(){
         </div>
         <div class="ph-stat" style="grid-column:1/-1">
           <div class="ph-stat-l">Phase</div>
-          <div class="ph-stat-v" style="font-size:11px;line-height:1.3">${phase||'<span style="color:var(--t3)">—</span>'}</div>
+          <div class="ph-stat-v" style="font-size:11px;line-height:1.35" title="${(phase||'').replace(/"/g,'&quot;')}">${phaseShort || '<span style="color:var(--t3)">—</span>'}</div>
         </div>
+        ${p.focus_roadmap ? `<div class="ph-stat" style="grid-column:1/-1">
+          <div class="ph-stat-l">Focus</div>
+          <div class="ph-stat-v" style="font-size:10.5px;color:var(--acc);font-weight:700">${p.focus_roadmap}</div>
+        </div>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -719,17 +732,19 @@ document.getElementById('auth-pass')?.addEventListener('keydown',e=>{ if(e.key==
   console.log('[roadmap] init start');
   document.getElementById('panels-root').innerHTML = '<div style="padding:1rem;color:grey;font-size:12px">Loading…</div>';
 
-  // Load quarters + milestones (via restFetch — public reads, bypass GoTrueClient hang)
-  console.log('[roadmap] fetching quarters via REST...');
+  // Load quarters + milestones + quarter_periods (via restFetch — public reads)
+  console.log('[roadmap] fetching public data via REST...');
   try {
-    const [d1, d2] = await Promise.all([
+    const [d1, d2, d3] = await Promise.all([
       restFetch('quarters', 'select=quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end'),
-      restFetch('quarter_milestones', 'select=quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note&order=week_label.asc')
+      restFetch('quarter_milestones', 'select=quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note&order=week_label.asc'),
+      restFetch('quarter_periods', 'select=*&order=sort_order.asc')
     ]);
-    console.log('[roadmap] quarters:', d1.length, 'milestones:', d2.length);
-    S.quarters   = sortQuarters(d1);
-    S.milestones = d2;
-  } catch(e){ console.error('[roadmap] init load threw:', e); S.quarters=[]; S.milestones=[]; }
+    console.log('[roadmap] quarters:', d1.length, 'milestones:', d2.length, 'periods:', d3.length);
+    S.quarters       = sortQuarters(d1);
+    S.milestones     = d2;
+    S.quarterPeriods = d3;
+  } catch(e){ console.error('[roadmap] init load threw:', e); S.quarters=[]; S.milestones=[]; S.quarterPeriods=[]; }
 
   console.log('[roadmap] S.quarters.length=', S.quarters.length);
 
