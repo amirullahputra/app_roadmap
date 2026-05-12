@@ -24,6 +24,22 @@ console.log('[roadmap] module start, window.supabase=', typeof window.supabase);
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 console.log('[roadmap] supa created');
 
+// ── REST FETCH HELPER ──
+// Public reads bypass supa client karena GoTrueClient init bisa hang
+// (lock semantics quirk di incognito / storage-restricted context).
+// Per CLAUDE.md: PUBLIC data reads HARUS pakai plain fetch().
+async function restFetch(table, query=''){
+  const url = `${SUPA_URL}/rest/v1/${table}${query?'?'+query:''}`;
+  const res = await fetch(url, {
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
+  });
+  if(!res.ok){
+    const body = await res.text().catch(()=>'');
+    throw new Error(`${table}: HTTP ${res.status} ${body.slice(0,200)}`);
+  }
+  return res.json();
+}
+
 const APP_PEP      = 'https://amirullahputra.github.io/app_pep/';
 const APP_EXERCISE = 'https://amirullahputra.github.io/app_exercise/';
 
@@ -394,7 +410,8 @@ function pMilestones(){
 // ── PANEL: DOCS ──────────────────────────────────────────
 async function loadContentForQ(qid){
   if(S.contentCache[qid]) return;
-  const { data } = await supa.from('quarter_content').select('doc_type,content_md').eq('quarter_id',qid);
+  // Public read via restFetch (bypass GoTrueClient hang quirk)
+  const data = await restFetch('quarter_content', `select=doc_type,content_md&quarter_id=eq.${encodeURIComponent(qid)}`);
   S.contentCache[qid] = {};
   if(data) data.forEach(r=>{ S.contentCache[qid][r.doc_type]=r.content_md; });
 }
@@ -638,15 +655,16 @@ document.getElementById('auth-pass')?.addEventListener('keydown',e=>{ if(e.key==
   console.log('[roadmap] init start');
   document.getElementById('panels-root').innerHTML = '<div style="padding:1rem;color:grey;font-size:12px">Loading…</div>';
 
-  // Load quarters + milestones
-  console.log('[roadmap] fetching quarters...');
+  // Load quarters + milestones (via restFetch — public reads, bypass GoTrueClient hang)
+  console.log('[roadmap] fetching quarters via REST...');
   try {
-    const r1 = await supa.from('quarters').select('quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end');
-    console.log('[roadmap] quarters result:', r1.error || 'ok', (r1.data||[]).length);
-    const r2 = await supa.from('quarter_milestones').select('quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note').order('week_label');
-    console.log('[roadmap] milestones result:', r2.error || 'ok', (r2.data||[]).length);
-    S.quarters   = sortQuarters(r1.data || []);
-    S.milestones = r2.data || [];
+    const [d1, d2] = await Promise.all([
+      restFetch('quarters', 'select=quarter_id,phase_type,window_raw,total_weeks,bb_start,bb_end,bf_start,bf_end'),
+      restFetch('quarter_milestones', 'select=quarter_id,week_label,date_range,bb_target,bf_target,lab_tests,note&order=week_label.asc')
+    ]);
+    console.log('[roadmap] quarters:', d1.length, 'milestones:', d2.length);
+    S.quarters   = sortQuarters(d1);
+    S.milestones = d2;
   } catch(e){ console.error('[roadmap] init load threw:', e); S.quarters=[]; S.milestones=[]; }
 
   console.log('[roadmap] S.quarters.length=', S.quarters.length);
