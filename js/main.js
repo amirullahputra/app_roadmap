@@ -213,7 +213,7 @@ window.setTab = function(i){ S.tab=i; render(); };
 // Kalau di Docs tab, fetch content untuk quarter baru sebelum re-render.
 window.selectQ = function(qid){
   S.selectedQ = qid;
-  syncQuarterToStorage(qid);
+  try { localStorage.setItem('vhm.activeSemester', qid); } catch(e){}
   if(S.tab === 2){ loadContentForQ(qid).then(render); }
   else { render(); }
 };
@@ -471,12 +471,6 @@ function pMilestones(){
   const ms = S.milestones.filter(m=>m.quarter_id===q.quarter_id);
 
   return `
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem">
-      ${S.quarters.map((qq,i)=>`
-        <button class="tab-btn${S.selectedQ===qq.quarter_id?' act':''}" onclick="selectQ('${qq.quarter_id}')" style="flex:none">
-          ${qq.quarter_id.replace('_',' ')}
-        </button>`).join('')}
-    </div>
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title">📋 ${q.quarter_id.replace('_',' ')} — ${q.window_raw||''}</div>
       <div class="vial-summary-strip" style="margin-bottom:0">
