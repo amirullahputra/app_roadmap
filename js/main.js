@@ -198,47 +198,59 @@ window.selectQ = function(qid){ S.selectedQ=qid; S.tab=1; render(); };
 window.selectQDoc = function(qid){ S.selectedQ=qid; loadContentForQ(qid).then(render); };
 window.setActiveDoc = function(doc){ S.activeDoc=doc; renderPanel(); };
 
-// ── QUARTER ROW (4-card grid, mirror exercise_fl pattern) ──
+// ── QUARTER ROW (4 period cards, granularity 3-bulan) ──
+// Tampilan: Q3 2026, Q4 2026, Q1 2027, Q2 2027.
+// Data BB/BF interpolasi linear (midpoint) dari parent semester.
+const PERIODS = [
+  { period_id:'Q3_2026', semester_id:'Q3Q4_2026', half:'first',  label:'Q3 2026', dateRange:'Jul – Sep 2026' },
+  { period_id:'Q4_2026', semester_id:'Q3Q4_2026', half:'second', label:'Q4 2026', dateRange:'Okt – Des 2026' },
+  { period_id:'Q1_2027', semester_id:'Q1Q2_2027', half:'first',  label:'Q1 2027', dateRange:'Jan – Mar 2027' },
+  { period_id:'Q2_2027', semester_id:'Q1Q2_2027', half:'second', label:'Q2 2027', dateRange:'Apr – Jun 2027' },
+];
+
+// Interpolasi midpoint: semester start→end, first half = start→mid, second half = mid→end
+function splitRange(s, e, half){
+  if(s==null || e==null) return [null,null];
+  const mid = +((s + e) / 2).toFixed(1);
+  return half === 'first' ? [s, mid] : [mid, e];
+}
+
 function renderQuarterCardRow(){
-  if(!S.quarters?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading quarters…</div>';
+  if(!S.quarters?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading periods…</div>';
 
-  // Sort chronological: year asc, semester Q1Q2 before Q3Q4
-  const yearOf = qid => parseInt(qid.split('_')[1]) || 9999;
-  const semOf  = qid => qid.startsWith('Q1Q2') ? 1 : 2;
-  const sorted = [...S.quarters].sort((a,b) => {
-    const dy = yearOf(a.quarter_id) - yearOf(b.quarter_id);
-    return dy !== 0 ? dy : semOf(a.quarter_id) - semOf(b.quarter_id);
-  });
-  const visible = sorted.slice(0, 4);
+  const semMap = Object.fromEntries(S.quarters.map(q => [q.quarter_id, q]));
 
-  const cards = visible.map(q => {
-    const sel = S.selectedQ === q.quarter_id;
-    const hasData = q.bb_start != null && q.bb_end != null;
-    const bbRange = hasData ? `${q.bb_start}→${q.bb_end} kg` : '—';
-    const bfRange = (q.bf_start != null && q.bf_end != null) ? `${q.bf_start}→${q.bf_end}%` : '—';
-    const weeks   = q.total_weeks || 26;
-    const wRange  = q.window_raw || '—';
-    const dotColor = hasData ? 'var(--acc)' : 'var(--t3)';
+  const cards = PERIODS.map(p => {
+    const sem = semMap[p.semester_id];
+    const sel = S.selectedQ === p.semester_id;
+    const [bbS, bbE] = splitRange(sem?.bb_start, sem?.bb_end, p.half);
+    const [bfS, bfE] = splitRange(sem?.bf_start, sem?.bf_end, p.half);
+    const hasBB = bbS != null;
+    const hasBF = bfS != null;
+    const bbRange = hasBB ? `${bbS}→${bbE} kg` : '—';
+    const bfRange = hasBF ? `${bfS}→${bfE}%` : '—';
+    const phase   = sem?.phase_type || null;
+    const dotColor = hasBB ? 'var(--acc)' : 'var(--t3)';
 
-    return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${q.quarter_id}')" style="cursor:pointer">
+    return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${p.semester_id}')" style="cursor:pointer">
       <div class="ph-tag" style="color:${dotColor}">
         <div class="ph-dot" style="background:${dotColor}"></div>
-        ${q.quarter_id.replace('_',' ')}
+        ${p.label}
       </div>
-      <div class="ph-name">${q.quarter_id.replace('_',' ')}</div>
-      <div class="ph-desc" style="font-size:10.5px">${weeks} minggu · ${wRange}</div>
+      <div class="ph-name">${p.label}</div>
+      <div class="ph-desc" style="font-size:10.5px">13 minggu · ${p.dateRange} · <span style="color:var(--t3)">${p.semester_id.replace('_',' ')}</span></div>
       <div class="ph-grid" style="grid-template-columns:1fr 1fr">
         <div class="ph-stat">
           <div class="ph-stat-l">BB Target</div>
-          <div class="ph-stat-v" style="color:${hasData?'var(--acc)':'var(--t3)'};font-size:13px">${bbRange}</div>
+          <div class="ph-stat-v" style="color:${hasBB?'var(--acc)':'var(--t3)'};font-size:13px">${bbRange}</div>
         </div>
         <div class="ph-stat">
           <div class="ph-stat-l">BF Target</div>
-          <div class="ph-stat-v" style="color:${hasData?'var(--acc)':'var(--t3)'};font-size:13px">${bfRange}</div>
+          <div class="ph-stat-v" style="color:${hasBF?'var(--acc)':'var(--t3)'};font-size:13px">${bfRange}</div>
         </div>
         <div class="ph-stat" style="grid-column:1/-1">
           <div class="ph-stat-l">Phase</div>
-          <div class="ph-stat-v" style="font-size:11px;line-height:1.3">${q.phase_type||'<span style="color:var(--t3)">—</span>'}</div>
+          <div class="ph-stat-v" style="font-size:11px;line-height:1.3">${phase||'<span style="color:var(--t3)">—</span>'}</div>
         </div>
       </div>
     </div>`;
