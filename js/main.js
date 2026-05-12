@@ -638,14 +638,39 @@ function pRaceGoals(){
       }).join('')}
     </div>
     <div class="card">
-      <div class="card-title">📅 Protocol Timeline 2026–2029</div>
-      ${S.quarters.map((q,i)=>`
-        <div class="tl-row">
-          <div class="tl-dot" style="background:${Q_COLORS[i]}"></div>
-          <div class="tl-q">${q.quarter_id.replace('_',' ')}</div>
-          <div class="tl-win">${q.window_raw||''}</div>
-          <div class="tl-bb" style="color:${Q_COLORS[i]}">${q.bb_start||'?'}→${q.bb_end||'?'} kg · ${q.bf_start||'?'}→${q.bf_end||'?'}%</div>
-        </div>`).join('')}
+      <div class="card-title">📅 Protocol Timeline 2026–2030 · ${S.quarterPeriods?.length || 0} quarters</div>
+      ${(S.quarterPeriods||[]).map((p,i)=>{
+        const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
+        const yearChange = i > 0 && p.year !== S.quarterPeriods[i-1].year;
+        const hasBB = p.bb_start_kg != null;
+        const hasBF = p.bf_start_pct != null;
+        const bbStr = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
+        const bfStr = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
+        const weeks = (p.week_start && p.week_end) ? `W${p.week_start}-W${p.week_end}` : 'pre';
+        const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
+        const phaseShort = p.phase_type ? (p.phase_type.length > 90 ? p.phase_type.slice(0,87)+'...' : p.phase_type) : '';
+        const phaseFull = (p.phase_type||'').replace(/"/g,'&quot;');
+        const focusTags = [
+          p.focus_roadmap && `<span style="background:var(--acc-bg);color:var(--acc);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">${p.focus_roadmap}</span>`,
+          p.focus_pep && `<span style="background:var(--f1-bg);color:var(--f1);padding:2px 7px;border-radius:10px;font-size:10px">💉 ${p.focus_pep}</span>`,
+          p.focus_exercise && `<span style="background:var(--f3-bg);color:var(--f3);padding:2px 7px;border-radius:10px;font-size:10px">🏋️ ${p.focus_exercise}</span>`
+        ].filter(Boolean).join(' ');
+        return `${yearChange ? `<div style="height:8px;border-top:1px dashed var(--bdr);margin:8px 0 4px"></div>` : ''}
+        <div style="display:grid;grid-template-columns:auto 90px 1fr 180px;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--bdr)">
+          <div style="width:10px;height:10px;border-radius:50%;background:${color};margin-top:5px"></div>
+          <div>
+            <div style="font-weight:800;font-size:13px;color:var(--t0)">${p.label_short}</div>
+            <div style="font-size:10.5px;color:var(--t3);margin-top:2px">${weeks} · ${dateRange}</div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--t1);line-height:1.4" title="${phaseFull}">${phaseShort || '<span style="color:var(--t3)">—</span>'}</div>
+            ${focusTags ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${focusTags}</div>` : ''}
+          </div>
+          <div style="text-align:right;font-size:11.5px;font-weight:700;color:${color}">
+            ${bbStr}<br><span style="font-weight:500">${bfStr}</span>
+          </div>
+        </div>`;
+      }).join('')}
     </div>`;
 }
 
