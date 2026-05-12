@@ -461,14 +461,57 @@ function pOverview(){
       </div>
     </div>` : '';
 
-  return statusBar + appLinks + gymHtml + cardioHtml + raceHtml + qProgress;
+  // Checkpoints untuk quarter terpilih (semester format)
+  const selectedQid = S.selectedQ || S.currentQuarter?.quarter_id;
+  const checkpointsHtml = selectedQid ? renderCheckpoints(selectedQid) : '';
+
+  return statusBar + checkpointsHtml + appLinks + gymHtml + cardioHtml + raceHtml + qProgress;
+}
+
+// ── CHECKPOINTS RENDERER (shared, dipakai di Overview) ──
+// Filter by quarter_id (semester format), sort numeric by week number.
+function renderCheckpoints(quarterId){
+  if(!quarterId) return '';
+  const ms = (S.milestones||[])
+    .filter(m => m.quarter_id === quarterId)
+    .slice()
+    .sort((a,b) => {
+      const wa = parseInt(String(a.week_label).replace(/\D/g,'')) || 0;
+      const wb = parseInt(String(b.week_label).replace(/\D/g,'')) || 0;
+      return wa - wb;
+    });
+
+  if(!ms.length){
+    return `<div class="card" style="margin-bottom:.75rem">
+      <div class="card-title">📍 Checkpoints — ${quarterId.replace('_',' ')}</div>
+      <div class="empty-state" style="padding:1.5rem 1rem">
+        <div class="empty-ico">📍</div>
+        <div class="empty-txt">Belum ada checkpoint data untuk quarter ini</div>
+      </div>
+    </div>`;
+  }
+
+  return `<div class="card" style="margin-bottom:.75rem">
+    <div class="card-title">📍 Checkpoints — ${quarterId.replace('_',' ')} · ${ms.length} milestone</div>
+    ${ms.map((m,i)=>`
+      <div class="ms-row">
+        <div class="ms-dot" style="background:hsl(${200+i*25},65%,55%)"></div>
+        <div class="ms-week">${m.week_label}</div>
+        <div class="ms-date">${m.date_range||''}</div>
+        <div class="ms-chips">
+          <div class="ms-chip"><div class="ms-chip-l">BB</div><div class="ms-chip-v">${m.bb_target||'?'} kg</div></div>
+          <div class="ms-chip"><div class="ms-chip-l">BF%</div><div class="ms-chip-v">${m.bf_target||'?'}%</div></div>
+          ${m.lab_tests ? `<div class="ms-chip"><div class="ms-chip-l">Lab</div><div class="ms-chip-v" style="font-size:10px">${m.lab_tests}</div></div>` : ''}
+        </div>
+        ${m.note ? `<div class="ms-note">${m.note}</div>` : ''}
+      </div>`).join('')}
+  </div>`;
 }
 
 // ── PANEL: MILESTONES ────────────────────────────────────
 function pMilestones(){
   const q = S.quarters.find(x=>x.quarter_id===S.selectedQ) || S.quarters[0];
   if(!q) return `<div class="card"><div class="empty-state"><div class="empty-ico">📍</div><div class="empty-txt">Data belum tersedia</div></div></div>`;
-  const ms = S.milestones.filter(m=>m.quarter_id===q.quarter_id);
 
   return `
     <div class="card" style="margin-bottom:.75rem">
@@ -480,22 +523,6 @@ function pMilestones(){
         <div class="vs-card"><div class="vs-l">BF Target</div><div class="vs-v" style="color:var(--f3)">${q.bf_end||'?'}<span style="font-size:13px">%</span></div></div>
       </div>
     </div>
-    ${ms.length ? `
-    <div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">📍 Checkpoints</div>
-      ${ms.map((m,i)=>`
-        <div class="ms-row">
-          <div class="ms-dot" style="background:hsl(${200+i*25},65%,55%)"></div>
-          <div class="ms-week">${m.week_label}</div>
-          <div class="ms-date">${m.date_range||''}</div>
-          <div class="ms-chips">
-            <div class="ms-chip"><div class="ms-chip-l">BB</div><div class="ms-chip-v">${m.bb_target||'?'} kg</div></div>
-            <div class="ms-chip"><div class="ms-chip-l">BF%</div><div class="ms-chip-v">${m.bf_target||'?'}%</div></div>
-            ${m.lab_tests ? `<div class="ms-chip"><div class="ms-chip-l">Lab</div><div class="ms-chip-v" style="font-size:10px">${m.lab_tests}</div></div>` : ''}
-          </div>
-          ${m.note ? `<div class="ms-note">${m.note}</div>` : ''}
-        </div>`).join('')}
-    </div>` : `<div class="card" style="margin-bottom:.75rem"><div class="empty-state"><div class="empty-ico">📍</div><div class="empty-txt">Belum ada checkpoint data</div></div></div>`}
     <div class="card">
       <div class="card-title">🗓️ Full Quarter Timeline 2026–2030 · ${S.quarterPeriods?.length || 0} quarters</div>
       ${(S.quarterPeriods||[]).map((p,i)=>{
