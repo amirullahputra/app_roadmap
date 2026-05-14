@@ -7,19 +7,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=24">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <style>
     /* ── QUARTER GRID ── */
     .q-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:1rem}
-    .q-card{background:var(--bg1);border:2px solid var(--bdr);border-radius:var(--r2);padding:1rem 1.125rem;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm)}
-    .q-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--bdr2)}
-    .q-card.act{border-color:var(--acc);background:var(--acc-bg);box-shadow:0 0 0 3px rgba(67,97,238,.1),var(--shadow)}
-    .q-id{font-size:11px;font-weight:800;color:var(--acc);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
-    .q-type{font-size:10px;color:var(--t2);margin-bottom:.75rem}
-    .q-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-    .q-stat{background:var(--bg2);border-radius:var(--r);padding:.5rem;border:1px solid var(--bdr)}
-    .q-stat-l{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px}
-    .q-stat-v{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--t0);margin-top:2px}
+    .q-card{background:var(--bg2);border:1px solid rgba(187,203,185,.18);border-radius:var(--r2);padding:1.375rem 1.5rem;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm)}
+    .q-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:rgba(0,109,50,.22)}
+    .q-card.act{border-color:var(--acc);background:var(--acc-bg);box-shadow:0 0 0 3px rgba(0,109,50,.12),var(--shadow)}
+    .q-id{font-size:11px;font-weight:800;color:var(--acc);text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px;font-family:'Space Grotesk',sans-serif}
+    .q-type{font-size:10px;color:var(--t2);margin-bottom:1rem}
+    .q-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .q-stat{background:rgba(255,255,255,.55);border-radius:var(--r);padding:.625rem;border:1px solid rgba(0,0,0,.05)}
+    .q-stat-l{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+    .q-stat-v{font-family:'Space Grotesk',monospace;font-size:22px;font-weight:700;color:var(--t0);margin-top:3px;letter-spacing:-.4px;line-height:1.1}
+    .q-card.act .q-stat-v{color:var(--acc)}
+    .q-bar{height:5px;border-radius:3px;background:rgba(0,0,0,.08);margin-top:12px;overflow:hidden}
+    .q-bar-fill{height:100%;border-radius:3px;background:var(--acc)}
     /* ── MILESTONE LIST ── */
     .ms-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bdr)}
     .ms-row:last-child{border-bottom:none}
@@ -35,7 +38,7 @@
     .stat-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:1rem}
     .st-card{background:var(--bg1);border:1px solid var(--bdr);border-radius:var(--r2);padding:.875rem 1rem;box-shadow:var(--shadow-sm)}
     .st-l{font-size:9.5px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-    .st-v{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--t0);line-height:1}
+    .st-v{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;color:var(--t0);line-height:1;letter-spacing:-.5px}
     .st-s{font-size:10px;color:var(--t2);margin-top:3px}
     /* ── RACE CARD ── */
     .race-card{background:var(--bg1);border:1px solid var(--bdr);border-radius:var(--r2);padding:1rem;margin-bottom:8px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-sm);transition:all .2s}
@@ -134,7 +137,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<div id="app-version" style="position:fixed;bottom:4px;right:8px;font-size:9px;color:#999;opacity:.5;font-family:'JetBrains Mono',monospace;pointer-events:none;z-index:9999">v=22</div>
+<div id="app-version" style="position:fixed;bottom:4px;right:8px;font-size:9px;color:#999;opacity:.5;font-family:'JetBrains Mono',monospace;pointer-events:none;z-index:9999">v=25</div>
 <script type="module" src="js/main.js?v=22"></script>
 </body>
 </html>

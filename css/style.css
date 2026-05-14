@@ -325,8 +325,9 @@ input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer;height:4px}
   .sport-grid{grid-template-columns:repeat(2,1fr)}
   .grid3{grid-template-columns:1fr}
   .grid4{grid-template-columns:repeat(2,1fr)}
-  .q-grid{display:flex;overflow-x:auto;gap:10px;padding-bottom:6px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory}
-  .q-card{flex:0 0 220px;scroll-snap-align:start}
+  .q-grid{display:flex;overflow-x:auto;gap:12px;padding-bottom:8px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none}
+  .q-grid::-webkit-scrollbar{display:none}
+  .q-card{flex:0 0 250px;scroll-snap-align:start}
   .stat-strip{grid-template-columns:repeat(2,1fr)}
   .gantt-grid{min-width:600px}
   .phase-row{grid-template-columns:1fr}
