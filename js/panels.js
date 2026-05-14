@@ -595,9 +595,6 @@ function _docsHtml(qid, md){
     : `<div class="md-content">${renderMd(md)}</div>`;
   return `
     <div class="doc-sel-row">
-      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--r);font-size:11px;font-weight:700;color:var(--acc)">
-        📅 ${qid.replace('_',' ')}
-      </div>
       ${DOC_TYPES.map(d=>`
         <button class="doc-btn${S.activeDoc===d?' act':''}" onclick="setActiveDoc('${d}')">${DOC_ICONS[d]} ${d}</button>`).join('')}
     </div>

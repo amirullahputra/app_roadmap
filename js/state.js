@@ -13,7 +13,7 @@ export const RACES = [
   { name:'70.3 Ironman', date:'2029-01-01', icon:'🏊🚴🏃', dist:'113 km' },
 ];
 export const Q_COLORS  = ['var(--f1)','var(--acc)','var(--f3)','var(--hor)','var(--f2)','var(--cns)','var(--inf)','var(--f1)'];
-export const DOC_TYPES = ['TARGET','PEPTIDE','GYM','CARDIO','NUTRISI','VITAMIN','MACROCYCLE'];
+export const DOC_TYPES = ['MACROCYCLE','TARGET','PEPTIDE','GYM','CARDIO','NUTRISI','VITAMIN'];
 export const DOC_ICONS = { TARGET:'🎯', PEPTIDE:'💉', GYM:'🏋️', CARDIO:'🏃', NUTRISI:'🍽️', VITAMIN:'💊', MACROCYCLE:'📖' };
 export const TABS = ['🏠 Overview','📅 Milestones','📄 Docs','📊 Body Comp','🏁 Race Goals'];
 
@@ -22,7 +22,7 @@ export const S = {
   user: null,
   timeline: [],
   byPeriod: {},
-  activeDoc: 'TARGET',
+  activeDoc: 'MACROCYCLE',
   selectedQ: null,
   latestBodyComp: null,
   bodyCompLog: [],

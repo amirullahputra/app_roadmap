@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=25">
   <style>
-    /* â”€â”€ QUARTER GRID â”€â”€ */
+    /* ── QUARTER GRID ── */
     .q-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:1rem}
     .q-card{background:var(--bg2);border:1px solid rgba(187,203,185,.18);border-radius:var(--r2);padding:1.375rem 1.5rem;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm)}
     .q-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:rgba(0,109,50,.22)}
@@ -23,7 +23,7 @@
     .q-card.act .q-stat-v{color:var(--acc)}
     .q-bar{height:5px;border-radius:3px;background:rgba(0,0,0,.08);margin-top:12px;overflow:hidden}
     .q-bar-fill{height:100%;border-radius:3px;background:var(--acc)}
-    /* â”€â”€ MILESTONE LIST â”€â”€ */
+    /* ── MILESTONE LIST ── */
     .ms-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bdr)}
     .ms-row:last-child{border-bottom:none}
     .ms-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
@@ -34,27 +34,27 @@
     .ms-chip-l{color:var(--t3);font-weight:700;font-size:9px;text-transform:uppercase}
     .ms-chip-v{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--t0)}
     .ms-note{font-size:10px;color:var(--t3);max-width:140px}
-    /* â”€â”€ STAT STRIP â”€â”€ */
+    /* ── STAT STRIP ── */
     .stat-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:1rem}
     .st-card{background:var(--bg1);border:1px solid var(--bdr);border-radius:var(--r2);padding:.875rem 1rem;box-shadow:var(--shadow-sm)}
     .st-l{font-size:9.5px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
     .st-v{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;color:var(--t0);line-height:1;letter-spacing:-.5px}
     .st-s{font-size:10px;color:var(--t2);margin-top:3px}
-    /* â”€â”€ RACE CARD â”€â”€ */
+    /* ── RACE CARD ── */
     .race-card{background:var(--bg1);border:1px solid var(--bdr);border-radius:var(--r2);padding:1rem;margin-bottom:8px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-sm);transition:all .2s}
     .race-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
     .race-ico{font-size:2rem;flex-shrink:0}
     .race-name{font-size:14px;font-weight:800;color:var(--t0)}
     .race-meta{font-size:11px;color:var(--t2);margin-top:2px}
     .race-days{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--acc);margin-left:auto;white-space:nowrap}
-    /* â”€â”€ DOC SELECTOR â”€â”€ */
+    /* ── DOC SELECTOR ── */
     .doc-sel-row{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:1rem}
     .doc-qsel{background:var(--bg2);border:1.5px solid var(--bdr2);border-radius:var(--r);color:var(--t0);padding:6px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;outline:none;cursor:pointer;margin-right:6px}
     .doc-qsel:focus{border-color:var(--acc)}
     .doc-btn{padding:5px 12px;border-radius:20px;border:1.5px solid var(--bdr2);background:var(--bg2);color:var(--t2);cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;transition:all .15s;white-space:nowrap}
     .doc-btn:hover{border-color:var(--acc);color:var(--acc)}
     .doc-btn.act{background:var(--acc);color:#fff;border-color:var(--acc);box-shadow:0 2px 6px rgba(67,97,238,.25)}
-    /* â”€â”€ MARKDOWN â”€â”€ */
+    /* ── MARKDOWN ── */
     .md-content{font-size:13px;line-height:1.75;color:var(--t1)}
     .md-content h1{font-size:16px;font-weight:800;color:var(--t0);margin:16px 0 8px}
     .md-content h2{font-size:14px;font-weight:800;color:var(--acc);margin:14px 0 6px}
@@ -65,23 +65,23 @@
     .md-content ul,.md-content ol{padding-left:20px;margin:6px 0}
     .md-content li{margin:3px 0}
     .md-content p{margin:6px 0}
-    /* â”€â”€ FORM â”€â”€ */
+    /* ── FORM ── */
     .form-inp{background:var(--bg2);border:1.5px solid var(--bdr2);border-radius:var(--r);color:var(--t0);padding:7px 10px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;transition:.15s}
     .form-inp:focus{border-color:var(--acc)}
     .btn{padding:8px 16px;border-radius:var(--r);border:none;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;transition:all .15s}
     .btn-danger{background:var(--warn-bg);border:1px solid var(--warn-bdr);color:var(--warn)}
-    /* â”€â”€ EMPTY â”€â”€ */
+    /* ── EMPTY ── */
     .empty-state{text-align:center;padding:3rem 1rem;color:var(--t3)}
     .empty-ico{font-size:2.5rem;margin-bottom:.5rem}
     .empty-txt{font-size:13px}
-    /* â”€â”€ TIMELINE STRIP â”€â”€ */
+    /* ── TIMELINE STRIP ── */
     .tl-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)}
     .tl-row:last-child{border-bottom:none}
     .tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
     .tl-q{font-size:11px;font-weight:800;color:var(--t0);width:110px;flex-shrink:0}
     .tl-win{font-size:10.5px;color:var(--t2);flex:1}
     .tl-bb{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700}
-    /* â”€â”€ MOBILE â”€â”€ */
+    /* ── MOBILE ── */
     @media(max-width:480px){
       .q-grid{grid-template-columns:1fr}
       .q-stats{grid-template-columns:repeat(2,1fr)}
@@ -101,7 +101,7 @@
 <!-- AUTH MODAL -->
 <div class="modal-overlay" id="auth-modal">
   <div class="modal-box">
-    <button class="modal-close" onclick="closeAuthModal()">âœ•</button>
+    <button class="modal-close" onclick="closeAuthModal()">✕</button>
     <div class="modal-title">Login</div>
     <div class="modal-sub">Masuk untuk mengakses fitur tracking</div>
     <input class="modal-input" id="auth-user" type="email" placeholder="Email" autocomplete="email">
@@ -117,10 +117,10 @@
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-brand">
-    <div class="topbar-ico" style="background:var(--acc);color:#fff">ðŸ—º</div>
+    <div class="topbar-ico" style="background:var(--acc);color:#fff">🗺</div>
     <div>
       <div class="topbar-title">Amir's Roadmap</div>
-      <div class="topbar-sub">Body Transformation Â· Ironman 2029 Â· VHM</div>
+      <div class="topbar-sub">Body Transformation · Ironman 2029 · VHM</div>
     </div>
   </div>
   <div class="auth-wrap">
