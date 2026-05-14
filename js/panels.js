@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=22';
-import { supa, updateTimelineRow } from './supabase.js?v=22';
+} from './state.js?v=23';
+import { supa, updateTimelineRow } from './supabase.js?v=23';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -579,37 +579,13 @@ function pMilestones(){
 }
 
 // ── PANEL: DOCS ──
-// Fetch .md dari folder content/{quarter_id}/{doctype}.md
-async function fetchDocMd(qid, docType){
-  const path = `content/${qid}/${docType.toLowerCase()}.md`;
-  try {
-    const res = await fetch(path);
-    if(!res.ok) return null;
-    return await res.text();
-  } catch(_){ return null; }
-}
-
+// Baca langsung dari S.byPeriod (sudah di-load saat init dari master_timeline)
 function pDocs(){
   const qid = S.selectedQ || getAllPeriodIds()[0];
   if(!qid) return `<div class="card"><div class="empty-state"><div class="empty-ico">📄</div><div>Loading...</div></div></div>`;
-
-  // Cek cache dulu
-  const cacheKey = `${qid}_${S.activeDoc}`;
-  if(S.docCache && S.docCache[cacheKey] !== undefined){
-    const cached = S.docCache[cacheKey];
-    return _docsHtml(qid, cached);
-  }
-
-  // Fetch async — render loading dulu, lalu re-render setelah dapat
-  fetchDocMd(qid, S.activeDoc).then(md => {
-    if(!S.docCache) S.docCache = {};
-    S.docCache[cacheKey] = md || '';
-    // Re-render panel saja (bukan full render supaya ga flicker)
-    const root = document.getElementById('panels-root');
-    if(root && S.tab === 2) root.innerHTML = pDocs();
-  });
-
-  return _docsHtml(qid, null);
+  const col = 'content_' + S.activeDoc.toLowerCase() + '_md';
+  const md = S.byPeriod[qid]?.[col] || '';
+  return _docsHtml(qid, md);
 }
 
 function _docsHtml(qid, md){
