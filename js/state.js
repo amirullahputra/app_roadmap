@@ -31,6 +31,7 @@ export const S = {
   currentQuarter: null,
   currentWeek: 0,
   editingPeriod: null,
+  docCache: {},
 };
 
 // ── UTILS ──

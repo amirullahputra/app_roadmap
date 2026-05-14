@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=21';
-import { supa, updateTimelineRow } from './supabase.js?v=21';
+} from './state.js?v=22';
+import { supa, updateTimelineRow } from './supabase.js?v=22';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -51,8 +51,11 @@ window.selectQ = function(qid){
   try { localStorage.setItem('vhm.activeQuarter', qid); } catch(e){}
   render();
 };
+window.setActiveDoc = function(doc){
+  S.activeDoc = doc;
+  renderPanel();
+};
 window.selectQDoc = window.selectQ;
-window.setActiveDoc = function(doc){ S.activeDoc=doc; renderPanel(); };
 
 // ── EDIT HANDLERS ──
 window.startEdit = function(periodId){
@@ -576,10 +579,44 @@ function pMilestones(){
 }
 
 // ── PANEL: DOCS ──
+// Fetch .md dari folder content/{quarter_id}/{doctype}.md
+async function fetchDocMd(qid, docType){
+  const path = `content/${qid}/${docType.toLowerCase()}.md`;
+  try {
+    const res = await fetch(path);
+    if(!res.ok) return null;
+    return await res.text();
+  } catch(_){ return null; }
+}
+
 function pDocs(){
   const qid = S.selectedQ || getAllPeriodIds()[0];
   if(!qid) return `<div class="card"><div class="empty-state"><div class="empty-ico">📄</div><div>Loading...</div></div></div>`;
-  const content = getDocContent(qid, S.activeDoc);
+
+  // Cek cache dulu
+  const cacheKey = `${qid}_${S.activeDoc}`;
+  if(S.docCache && S.docCache[cacheKey] !== undefined){
+    const cached = S.docCache[cacheKey];
+    return _docsHtml(qid, cached);
+  }
+
+  // Fetch async — render loading dulu, lalu re-render setelah dapat
+  fetchDocMd(qid, S.activeDoc).then(md => {
+    if(!S.docCache) S.docCache = {};
+    S.docCache[cacheKey] = md || '';
+    // Re-render panel saja (bukan full render supaya ga flicker)
+    const root = document.getElementById('panels-root');
+    if(root && S.tab === 2) root.innerHTML = pDocs();
+  });
+
+  return _docsHtml(qid, null);
+}
+
+function _docsHtml(qid, md){
+  const isLoading = md === null;
+  const content = isLoading
+    ? `<div style="color:var(--t3);font-size:12px;padding:2rem;text-align:center">⏳ Memuat...</div>`
+    : `<div class="md-content">${renderMd(md)}</div>`;
   return `
     <div class="doc-sel-row">
       <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--r);font-size:11px;font-weight:700;color:var(--acc)">
@@ -588,7 +625,7 @@ function pDocs(){
       ${DOC_TYPES.map(d=>`
         <button class="doc-btn${S.activeDoc===d?' act':''}" onclick="setActiveDoc('${d}')">${DOC_ICONS[d]} ${d}</button>`).join('')}
     </div>
-    <div class="card"><div class="md-content">${renderMd(content)}</div></div>`;
+    <div class="card">${content}</div>`;
 }
 
 // ── PANEL: BODY COMP ──
