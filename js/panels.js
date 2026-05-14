@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=29';
-import { supa, updateTimelineRow } from './supabase.js?v=29';
+} from './state.js?v=30';
+import { supa, updateTimelineRow } from './supabase.js?v=30';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -20,7 +20,6 @@ function renderTabNav(){
 function renderQuarterCardsContainer(){
   const el = document.getElementById('quarter-cards-row');
   if(!el) return;
-  if(S.tab === 1){ el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'block';
   el.innerHTML = renderQuarterCardRow();
 }
