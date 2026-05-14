@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=20';
-import { supa, updateTimelineRow } from './supabase.js?v=20';
+} from './state.js?v=21';
+import { supa, updateTimelineRow } from './supabase.js?v=21';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -274,12 +274,8 @@ function renderQuarterCardRow(){
     const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
     const phaseShort = phase ? (phase.length > 70 ? phase.slice(0, 67) + '...' : phase) : '';
 
-    return `<div class="ph-card${sel?' sel-all':''}${isEditing?' editing-card':''}" onclick="selectQ('${p.period_id}')" style="cursor:pointer;position:relative">
-      ${S.user ? `<button onclick="event.stopPropagation();startEdit('${p.period_id}')"
-        style="position:absolute;top:8px;right:8px;background:${isEditing?'var(--acc)':'var(--bg3)'};border:1px solid ${isEditing?'var(--acc)':'var(--bdr)'};color:${isEditing?'#fff':'var(--t2)'};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;z-index:2">
-        ${isEditing?'✏️ Editing':'✏️'}
-      </button>` : ''}
-      <div class="ph-tag" style="color:${dotColor};padding-right:${S.user?'40px':'0'}">
+    return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${p.period_id}')" style="cursor:pointer">
+      <div class="ph-tag" style="color:${dotColor}">
         <div class="ph-dot" style="background:${dotColor}"></div>
         ${p.label_short}
       </div>
