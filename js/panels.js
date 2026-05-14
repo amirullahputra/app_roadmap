@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=25';
-import { supa, updateTimelineRow } from './supabase.js?v=25';
+} from './state.js?v=26';
+import { supa, updateTimelineRow } from './supabase.js?v=26';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -715,22 +715,52 @@ function pRaceGoals(){
         </div>`;
       }).join('')}
     </div>
-    <div class="card">
-      <div class="card-title">📅 Protocol Timeline 2026–2030 · ${S.timeline?.length || 0} quarters</div>
-      ${(S.timeline||[]).map((p,i)=>{
-        const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
-        const hasBB = p.bb_start_kg != null;
-        const hasBF = p.bf_start_pct != null;
-        const bbStr = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
-        const bfStr = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
-        const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
-        return `<div class="tl-row">
-          <div class="tl-dot" style="background:${color}"></div>
-          <div class="tl-q">${p.label_short}</div>
-          <div class="tl-win">${dateRange}${p.week_start?` · W${p.week_start}-W${p.week_end}`:''}</div>
-          <div class="tl-bb" style="color:${color}">${bbStr} · ${bfStr}</div>
-        </div>`;
-      }).join('')}
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="card-title" style="padding:1rem 1.25rem .75rem">📅 Protocol Timeline 2026–2030 · ${S.timeline?.length || 0} quarters</div>
+      <div style="overflow-x:auto">
+        <table class="tl-table">
+          <thead>
+            <tr>
+              <th>Quarter</th>
+              <th>Periode</th>
+              <th>Weeks</th>
+              <th>BB (kg)</th>
+              <th>BF%</th>
+              <th>LBM floor</th>
+              <th>Phase / Focus</th>
+              <th>Peptide</th>
+              <th>Exercise</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+          ${(S.timeline||[]).map((p,i)=>{
+            const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
+            const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
+            const wkRange = p.week_start ? `W${p.week_start}–W${p.week_end}` : '—';
+            const bbStr = p.bb_start_kg != null ? `${p.bb_start_kg}→${p.bb_end_kg}` : '—';
+            const bfStr = p.bf_start_pct != null ? `${p.bf_start_pct}→${p.bf_end_pct}` : '—';
+            const lbm   = p.lbm_floor_kg != null ? `≥${p.lbm_floor_kg} kg` : '—';
+            const phase = p.focus_roadmap || p.phase_type || '—';
+            const pep   = p.focus_pep || '—';
+            const ex    = p.focus_exercise || '—';
+            const notes = p.period_notes || '—';
+            return `<tr>
+              <td><span class="tl-dot" style="background:${color};display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle"></span><strong style="color:var(--t0)">${p.label_short}</strong></td>
+              <td style="color:var(--t2);white-space:nowrap">${dateRange}</td>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--acc);white-space:nowrap">${wkRange}</td>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${color};white-space:nowrap">${bbStr}</td>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${color};white-space:nowrap">${bfStr}</td>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t1)">${lbm}</td>
+              <td style="font-size:11px;font-weight:700;color:var(--t0);max-width:160px">${phase}</td>
+              <td style="font-size:10px;color:var(--t2);max-width:180px">${pep}</td>
+              <td style="font-size:10px;color:var(--t2);max-width:180px">${ex}</td>
+              <td style="font-size:10px;color:var(--t3);max-width:200px">${notes}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+      </div>
     </div>`;
 }
 
