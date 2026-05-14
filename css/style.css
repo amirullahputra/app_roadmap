@@ -19,7 +19,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--t0);font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.5;min-height:100vh}
+body{background:var(--bg);color:var(--t0);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
 .mono{font-family:'JetBrains Mono',monospace}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:var(--bg2)}
@@ -325,7 +325,8 @@ input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer;height:4px}
   .sport-grid{grid-template-columns:repeat(2,1fr)}
   .grid3{grid-template-columns:1fr}
   .grid4{grid-template-columns:repeat(2,1fr)}
-  .q-grid{grid-template-columns:1fr}
+  .q-grid{display:flex;overflow-x:auto;gap:10px;padding-bottom:6px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory}
+  .q-card{flex:0 0 220px;scroll-snap-align:start}
   .stat-strip{grid-template-columns:repeat(2,1fr)}
   .gantt-grid{min-width:600px}
   .phase-row{grid-template-columns:1fr}
