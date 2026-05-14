@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=19';
-import { supa, updateTimelineRow } from './supabase.js?v=19';
+} from './state.js?v=20';
+import { supa, updateTimelineRow } from './supabase.js?v=20';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -65,6 +65,55 @@ window.startEdit = function(periodId){
       if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
     }, 50);
   }
+};
+
+// ── MILESTONE INLINE EDIT ──
+const _msPending = {};  // { period_id: { field: value, ... } }
+
+window.msFieldChange = function(el){
+  const pid   = el.dataset.pid;
+  const field = el.dataset.field;
+  const type  = el.type;
+  let val = el.value;
+  if(type === 'number') val = val === '' ? null : parseFloat(val);
+  if(!_msPending[pid]) _msPending[pid] = {};
+  _msPending[pid][field] = val;
+  // Show save bar
+  const bar = document.getElementById('ms-save-bar');
+  if(bar) bar.style.display = 'flex';
+  const msg = document.getElementById('ms-save-msg');
+  if(msg) msg.textContent = `${Object.keys(_msPending).length} quarter diubah — belum disimpan`;
+};
+
+window.saveMsChanges = async function(){
+  const msg = document.getElementById('ms-save-msg');
+  const entries = Object.entries(_msPending);
+  if(!entries.length) return;
+  if(msg){ msg.textContent = `⏳ Menyimpan ${entries.length} quarter...`; msg.style.color='var(--t3)'; }
+  const errs = [];
+  for(const [pid, fields] of entries){
+    try {
+      const updated = await updateTimelineRow(pid, fields);
+      const idx = S.timeline.findIndex(r => r.period_id === pid);
+      if(idx >= 0){
+        const merged = updated ? { ...S.timeline[idx], ...updated } : { ...S.timeline[idx], ...fields };
+        S.timeline[idx] = merged;
+        S.byPeriod[pid]  = merged;
+      }
+      delete _msPending[pid];
+    } catch(e){ errs.push(`${pid}: ${e.message}`); }
+  }
+  if(errs.length){
+    if(msg){ msg.textContent = '❌ ' + errs.join(' | '); msg.style.color='var(--warn)'; }
+  } else {
+    if(msg){ msg.textContent = '✅ Semua tersimpan!'; msg.style.color='var(--f3)'; }
+    setTimeout(()=>render(), 800);
+  }
+};
+
+window.discardMsChanges = function(){
+  Object.keys(_msPending).forEach(k => delete _msPending[k]);
+  render();
 };
 
 window.cancelEdit = function(){
@@ -443,57 +492,90 @@ function renderCheckpoints(periodId){
 }
 
 // ── PANEL: MILESTONES ──
+function msInp(pid, field, val, type='text', w='80px'){
+  const esc = (v) => String(v??'').replace(/"/g,'&quot;');
+  return `<input
+    data-pid="${pid}" data-field="${field}" type="${type}"
+    value="${esc(val)}"
+    style="width:${w};background:var(--bg2);border:1.5px solid var(--bdr2);border-radius:5px;color:var(--t0);padding:3px 6px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;outline:none;box-sizing:border-box"
+    onfocus="this.style.borderColor='var(--acc)'"
+    onblur="this.style.borderColor='var(--bdr2)'"
+    onchange="msFieldChange(this)">`;
+}
+
 function pMilestones(){
-  const periodId = S.selectedQ || getAllPeriodIds()[0];
-  const q = periodId ? quarterRollup(periodId) : null;
-  if(!q) return `<div class="card"><div class="empty-state"><div class="empty-ico">📍</div><div class="empty-txt">Data belum tersedia</div></div></div>`;
+  const canEdit = !!S.user;
 
   return `
-    <div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">📋 ${q.quarter_id.replace('_',' ')} — ${q.window_raw||''}</div>
-      <div class="vial-summary-strip" style="margin-bottom:0">
-        <div class="vs-card"><div class="vs-l">BB Start</div><div class="vs-v">${q.bb_start??'?'}<span style="font-size:13px"> kg</span></div></div>
-        <div class="vs-card"><div class="vs-l">BB Target</div><div class="vs-v" style="color:var(--f2)">${q.bb_end??'?'}<span style="font-size:13px"> kg</span></div></div>
-        <div class="vs-card"><div class="vs-l">BF Start</div><div class="vs-v">${q.bf_start??'?'}<span style="font-size:13px">%</span></div></div>
-        <div class="vs-card"><div class="vs-l">BF Target</div><div class="vs-v" style="color:var(--f3)">${q.bf_end??'?'}<span style="font-size:13px">%</span></div></div>
-      </div>
-    </div>
     <div class="card">
-      <div class="card-title">🗓️ Full Quarter Timeline 2026–2030 · ${S.timeline?.length || 0} quarters</div>
+      <div class="card-title" style="justify-content:space-between">
+        <span>🗓️ Full Quarter Timeline 2026–2030 · ${S.timeline?.length || 0} quarters</span>
+        ${canEdit ? `<span style="font-size:10px;color:var(--f3);font-weight:700">✏️ Login — klik field untuk edit langsung</span>` : `<span style="font-size:10px;color:var(--t3)">Login untuk edit</span>`}
+      </div>
+
+      <div style="display:grid;grid-template-columns:auto 100px 1fr auto auto auto auto;gap:0;margin-bottom:4px;padding:0 6px 6px">
+        <div></div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Quarter</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Phase / Focus</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;text-align:center;padding:0 6px">BB Start</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;text-align:center;padding:0 6px">BB End</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;text-align:center;padding:0 6px">BF Start</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;text-align:center;padding:0 6px">BF End</div>
+      </div>
+
       ${(S.timeline||[]).map((p,i)=>{
         const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
         const yearChange = i > 0 && p.year !== S.timeline[i-1].year;
-        const hasBB = p.bb_start_kg != null;
-        const hasBF = p.bf_start_pct != null;
-        const bbStr = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
-        const bfStr = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
-        const weeks = (p.week_start && p.week_end) ? `W${p.week_start}-W${p.week_end}` : 'pre';
+        const weeks = (p.week_start && p.week_end) ? `W${p.week_start}–W${p.week_end}` : 'pre';
         const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
-        const phase = p.focus_roadmap || '';
-        const phaseShort = phase ? (phase.length > 90 ? phase.slice(0,87)+'...' : phase) : '';
-        const phaseFull = phase.replace(/"/g,'&quot;');
-        const focusTags = [
-          p.focus_roadmap && `<span style="background:var(--acc-bg);color:var(--acc);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">${p.focus_roadmap}</span>`,
-          p.focus_pep && `<span style="background:var(--f1-bg);color:var(--f1);padding:2px 7px;border-radius:10px;font-size:10px">💉 ${p.focus_pep}</span>`,
-          p.focus_exercise && `<span style="background:var(--f3-bg);color:var(--f3);padding:2px 7px;border-radius:10px;font-size:10px">🏋️ ${p.focus_exercise}</span>`
-        ].filter(Boolean).join(' ');
-        const selected = p.period_id === S.selectedQ;
-        return `${yearChange ? `<div style="height:8px;border-top:1px dashed var(--bdr);margin:8px 0 4px"></div>` : ''}
-        <div onclick="selectQ('${p.period_id}')" style="display:grid;grid-template-columns:auto 90px 1fr 180px;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--bdr);cursor:pointer;background:${selected?'var(--acc-bg)':'transparent'};border-radius:6px;padding-left:6px;padding-right:6px">
-          <div style="width:10px;height:10px;border-radius:50%;background:${color};margin-top:5px"></div>
+        const pid = p.period_id;
+
+        const focusCell = canEdit ? `
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${msInp(pid,'focus_roadmap', p.focus_roadmap,'text','100%')}
+            <div style="display:flex;gap:4px">
+              <span style="font-size:9px;color:var(--f1);font-weight:700;white-space:nowrap;align-self:center">💉</span>
+              ${msInp(pid,'focus_pep', p.focus_pep,'text','calc(50% - 12px)')}
+              <span style="font-size:9px;color:var(--f3);font-weight:700;white-space:nowrap;align-self:center">🏋️</span>
+              ${msInp(pid,'focus_exercise', p.focus_exercise,'text','calc(50% - 12px)')}
+            </div>
+          </div>` : `
           <div>
-            <div style="font-weight:800;font-size:13px;color:var(--t0)">${p.label_short}</div>
-            <div style="font-size:10.5px;color:var(--t3);margin-top:2px">${weeks} · ${dateRange}</div>
-          </div>
-          <div>
-            <div style="font-size:12px;color:var(--t1);line-height:1.4" title="${phaseFull}">${phaseShort || '<span style="color:var(--t3)">—</span>'}</div>
-            ${focusTags ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${focusTags}</div>` : ''}
-          </div>
-          <div style="text-align:right;font-size:11.5px;font-weight:700;color:${color}">
-            ${bbStr}<br><span style="font-weight:500">${bfStr}</span>
-          </div>
-        </div>`;
+            <div style="font-size:12px;color:var(--t1)">${p.focus_roadmap||'<span style="color:var(--t3)">—</span>'}</div>
+            <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+              ${p.focus_pep?`<span style="background:var(--f1-bg);color:var(--f1);padding:2px 7px;border-radius:10px;font-size:10px">💉 ${p.focus_pep}</span>`:''}
+              ${p.focus_exercise?`<span style="background:var(--f3-bg);color:var(--f3);padding:2px 7px;border-radius:10px;font-size:10px">🏋️ ${p.focus_exercise}</span>`:''}
+            </div>
+          </div>`;
+
+        const bbStartCell = canEdit ? msInp(pid,'bb_start_kg', p.bb_start_kg,'number','68px') : `<span style="font-size:12px;font-weight:700;color:${color}">${p.bb_start_kg??'—'}</span>`;
+        const bbEndCell   = canEdit ? msInp(pid,'bb_end_kg',   p.bb_end_kg,  'number','68px') : `<span style="font-size:12px;font-weight:700;color:${color}">${p.bb_end_kg??'—'}</span>`;
+        const bfStartCell = canEdit ? msInp(pid,'bf_start_pct',p.bf_start_pct,'number','56px') : `<span style="font-size:12px;color:var(--t1)">${p.bf_start_pct??'—'}</span>`;
+        const bfEndCell   = canEdit ? msInp(pid,'bf_end_pct',  p.bf_end_pct,  'number','56px') : `<span style="font-size:12px;color:var(--f3)">${p.bf_end_pct??'—'}</span>`;
+
+        return `
+          ${yearChange ? `<div style="grid-column:1/-1;height:1px;background:var(--bdr);margin:4px 0"></div>` : ''}
+          <div style="display:grid;grid-template-columns:auto 100px 1fr auto auto auto auto;gap:8px;align-items:center;padding:8px 6px;border-radius:6px;transition:background .15s"
+            onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'">
+            <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0"></div>
+            <div>
+              <div style="font-weight:800;font-size:13px;color:var(--t0)">${p.label_short}</div>
+              <div style="font-size:9.5px;color:var(--t3);margin-top:1px">${weeks}</div>
+              <div style="font-size:9.5px;color:var(--t3)">${dateRange}</div>
+            </div>
+            <div style="min-width:0">${focusCell}</div>
+            <div style="text-align:center;padding:0 4px">${bbStartCell}</div>
+            <div style="text-align:center;padding:0 4px">${bbEndCell}</div>
+            <div style="text-align:center;padding:0 4px">${bfStartCell}</div>
+            <div style="text-align:center;padding:0 4px">${bfEndCell}</div>
+          </div>`;
       }).join('')}
+
+      <div id="ms-save-bar" style="display:none;position:sticky;bottom:0;background:var(--bg1);border-top:2px solid var(--acc);padding:.75rem 6px;margin-top:8px;display:flex;align-items:center;gap:10px">
+        <button onclick="saveMsChanges()" style="padding:7px 18px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">💾 Simpan Semua Perubahan</button>
+        <button onclick="discardMsChanges()" style="padding:7px 14px;background:var(--bg3);color:var(--t2);border:1px solid var(--bdr);border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">✕ Batal</button>
+        <span id="ms-save-msg" style="font-size:11px;color:var(--t3)"></span>
+      </div>
     </div>`;
 }
 
