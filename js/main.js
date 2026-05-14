@@ -17,9 +17,9 @@ window.addEventListener('unhandledrejection', e => {
   </div>`;
 });
 
-import { S, buildIndexes, getWeekNum, getWeekStart, quarterRollup, getAllPeriodIds } from './state.js?v=26';
-import { supa, restFetch, updateAuthUI, closeAuthModal, onAuthBtnClick, doLogin } from './supabase.js?v=26';
-import { render } from './panels.js?v=26';
+import { S, buildIndexes, getWeekNum, getWeekStart, quarterRollup, getAllPeriodIds } from './state.js?v=27';
+import { supa, restFetch, updateAuthUI, closeAuthModal, onAuthBtnClick, doLogin } from './supabase.js?v=27';
+import { render } from './panels.js?v=27';
 
 // Bind auth handlers to window (called from HTML onclick)
 window.closeAuthModal = closeAuthModal;
@@ -30,13 +30,18 @@ window.doLogin = doLogin;
 (async () => {
   document.getElementById('panels-root').innerHTML = '<div style="padding:1rem;color:grey;font-size:12px">Loading…</div>';
 
-  // Load master_timeline (single source of truth)
+  // Load master_timeline + milestones in parallel
   try {
-    S.timeline = await restFetch('master_timeline', 'select=*&order=sort_order.asc');
+    const [timeline, milestones] = await Promise.all([
+      restFetch('master_timeline', 'select=*&order=sort_order.asc'),
+      restFetch('milestones', 'select=*&order=date_target.asc').catch(()=>[]),
+    ]);
+    S.timeline = timeline;
+    S.milestones = milestones || [];
     buildIndexes();
   } catch(e) {
     console.error('[roadmap] init load threw:', e);
-    S.timeline = []; S.byPeriod = {}; S.bySemester = {};
+    S.timeline = []; S.byPeriod = {}; S.bySemester = {}; S.milestones = [];
   }
 
   S.currentWeek = getWeekNum();

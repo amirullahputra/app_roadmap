@@ -21,6 +21,7 @@ export const S = {
   tab: 0,
   user: null,
   timeline: [],
+  milestones: [],
   byPeriod: {},
   activeDoc: 'MACROCYCLE',
   selectedQ: null,

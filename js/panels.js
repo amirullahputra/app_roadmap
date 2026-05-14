@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=26';
-import { supa, updateTimelineRow } from './supabase.js?v=26';
+} from './state.js?v=27';
+import { supa, updateTimelineRow } from './supabase.js?v=27';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -502,80 +502,132 @@ function msInp(pid, field, val, type='text', w='80px'){
     onchange="msFieldChange(this)">`;
 }
 
+// Category config for milestone badges
+const MS_CAT = {
+  lab:       { icon:'🧪', label:'Lab',       color:'var(--f2)',  bg:'var(--f2-bg)',  bdr:'var(--f2-bdr)' },
+  race:      { icon:'🏁', label:'Race',      color:'var(--f1)',  bg:'var(--f1-bg)',  bdr:'var(--f1-bdr)' },
+  body_comp: { icon:'⚖️', label:'Body Comp', color:'var(--acc)', bg:'var(--acc-bg)', bdr:'var(--acc-bdr)' },
+  nutrition: { icon:'🍽️', label:'Nutrition', color:'var(--hor)', bg:'rgba(234,88,12,.08)', bdr:'rgba(234,88,12,.22)' },
+  hormone:   { icon:'🔬', label:'Hormone',   color:'var(--cns)', bg:'rgba(124,58,237,.08)', bdr:'rgba(124,58,237,.2)' },
+  fitness:   { icon:'📊', label:'Fitness',   color:'var(--f3)',  bg:'var(--f3-bg)',  bdr:'var(--f3-bdr)' },
+  training:  { icon:'🏋️', label:'Training',  color:'var(--f3)',  bg:'var(--f3-bg)',  bdr:'var(--f3-bdr)' },
+};
+const MC_COLORS = { MC1:'var(--f1)', MC2:'var(--acc)', MC3:'var(--f3)', MC4:'var(--hor)', MC5:'var(--f2)' };
+
 function pMilestones(){
-  const canEdit = !!S.user;
+  const ms = S.milestones || [];
 
-  return `
-    <div class="card">
-      <div class="card-title" style="justify-content:space-between">
-        <span>🗓️ Full Quarter Timeline 2026–2030 · ${S.timeline?.length || 0} quarters</span>
-        ${canEdit ? `<span style="font-size:10px;color:var(--f3);font-weight:700">✏️ Login — klik field untuk edit langsung</span>` : `<span style="font-size:10px;color:var(--t3)">Login untuk edit</span>`}
-      </div>
+  if(!ms.length) return `<div class="card"><div class="empty-state">
+    <div class="empty-ico">📋</div>
+    <div class="empty-txt">Belum ada milestone data. Upload milestones_upload.sql ke Supabase dulu.</div>
+  </div></div>`;
 
-      <div style="display:grid;grid-template-columns:auto 100px 1fr auto auto auto auto;gap:0;margin-bottom:4px;padding:0 6px 6px">
-        <div></div>
-        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Quarter</div>
-        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase">Phase / Focus</div>
-        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;text-align:center;padding:0 6px">BB Start</div>
-        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;text-align:center;padding:0 6px">BB End</div>
-        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;text-align:center;padding:0 6px">BF Start</div>
-        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;text-align:center;padding:0 6px">BF End</div>
-      </div>
+  const today = new Date();
 
-      ${(S.timeline||[]).map((p,i)=>{
-        const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
-        const yearChange = i > 0 && p.year !== S.timeline[i-1].year;
-        const weeks = (p.week_start && p.week_end) ? `W${p.week_start}–W${p.week_end}` : 'pre';
-        const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
-        const pid = p.period_id;
+  // Group by macrocycle
+  const byMC = {};
+  ms.forEach(m => {
+    const mc = m.macrocycle_id || 'MC?';
+    if(!byMC[mc]) byMC[mc] = [];
+    byMC[mc].push(m);
+  });
 
-        const focusCell = canEdit ? `
-          <div style="display:flex;flex-direction:column;gap:4px">
-            ${msInp(pid,'focus_roadmap', p.focus_roadmap,'text','100%')}
-            <div style="display:flex;gap:4px">
-              <span style="font-size:9px;color:var(--f1);font-weight:700;white-space:nowrap;align-self:center">💉</span>
-              ${msInp(pid,'focus_pep', p.focus_pep,'text','calc(50% - 12px)')}
-              <span style="font-size:9px;color:var(--f3);font-weight:700;white-space:nowrap;align-self:center">🏋️</span>
-              ${msInp(pid,'focus_exercise', p.focus_exercise,'text','calc(50% - 12px)')}
+  const mcBlocks = Object.entries(byMC).map(([mc, items]) => {
+    const mcColor = MC_COLORS[mc] || 'var(--t2)';
+    const mcLabel = { MC1:'MC1 — Reset Metabolisme', MC2:'MC2 — Recovery Sprint', MC3:'MC3 — Aerobic Base', MC4:'MC4 — 70.3 Race Build', MC5:'MC5 — Full Ironman' }[mc] || mc;
+    const doneCount = items.filter(m => m.status === 'done').length;
+
+    const cards = items.map((m, idx) => {
+      const cat = MS_CAT[m.category] || { icon:'📌', label:m.category, color:'var(--t2)', bg:'var(--bg3)', bdr:'var(--bdr)' };
+      const dateTarget = m.date_target ? new Date(m.date_target) : null;
+      const days = dateTarget ? Math.ceil((dateTarget - today) / (1000*60*60*24)) : null;
+      const isPast = days !== null && days < 0;
+      const isDone = m.status === 'done';
+      const isFailed = m.status === 'failed';
+
+      let statusBadge, statusDot;
+      if(isDone){
+        statusBadge = `<span class="ms-status done">✓ Done</span>`;
+        statusDot = 'var(--f3)';
+      } else if(isFailed){
+        statusBadge = `<span class="ms-status failed">✕ Failed</span>`;
+        statusDot = 'var(--warn)';
+      } else if(isPast){
+        statusBadge = `<span class="ms-status overdue">⚠ Overdue</span>`;
+        statusDot = 'var(--warn)';
+      } else if(days !== null && days <= 90){
+        statusBadge = `<span class="ms-status soon">${days}d lagi</span>`;
+        statusDot = 'var(--f2)';
+      } else {
+        statusBadge = `<span class="ms-status pending">Pending</span>`;
+        statusDot = 'var(--bdr2)';
+      }
+
+      const dateStr = dateTarget ? dateTarget.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '—';
+      const qRef = m.quarter_ref ? `<span class="ms-qref">${m.quarter_ref.replace('_',' ')}</span>` : '';
+
+      return `<div class="ms-card${isDone?' ms-done':''}${isFailed?' ms-failed':''}">
+        <div class="ms-card-left">
+          <div class="ms-dot-line">
+            <div class="ms-node" style="background:${statusDot};box-shadow:0 0 0 3px color-mix(in srgb,${statusDot} 20%,transparent)"></div>
+            ${idx < items.length-1 ? `<div class="ms-vline"></div>` : ''}
+          </div>
+        </div>
+        <div class="ms-card-body">
+          <div class="ms-card-header">
+            <div class="ms-card-meta">
+              <span class="ms-cat-badge" style="background:${cat.bg};color:${cat.color};border-color:${cat.bdr}">${cat.icon} ${cat.label}</span>
+              ${qRef}
+              <span class="ms-date-badge">${dateStr}</span>
             </div>
-          </div>` : `
-          <div>
-            <div style="font-size:12px;color:var(--t1)">${p.focus_roadmap||'<span style="color:var(--t3)">—</span>'}</div>
-            <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
-              ${p.focus_pep?`<span style="background:var(--f1-bg);color:var(--f1);padding:2px 7px;border-radius:10px;font-size:10px">💉 ${p.focus_pep}</span>`:''}
-              ${p.focus_exercise?`<span style="background:var(--f3-bg);color:var(--f3);padding:2px 7px;border-radius:10px;font-size:10px">🏋️ ${p.focus_exercise}</span>`:''}
+            ${statusBadge}
+          </div>
+          <div class="ms-card-id">${m.milestone_id}</div>
+          <div class="ms-card-title">${m.label}</div>
+          <div class="ms-card-desc">${m.description || ''}</div>
+          <div class="ms-gate-row">
+            <div class="ms-gate ms-gate-pass">
+              <div class="ms-gate-hd">✅ Gate Pass</div>
+              <div class="ms-gate-txt">${m.gate_pass || '—'}</div>
             </div>
-          </div>`;
-
-        const bbStartCell = canEdit ? msInp(pid,'bb_start_kg', p.bb_start_kg,'number','68px') : `<span style="font-size:12px;font-weight:700;color:${color}">${p.bb_start_kg??'—'}</span>`;
-        const bbEndCell   = canEdit ? msInp(pid,'bb_end_kg',   p.bb_end_kg,  'number','68px') : `<span style="font-size:12px;font-weight:700;color:${color}">${p.bb_end_kg??'—'}</span>`;
-        const bfStartCell = canEdit ? msInp(pid,'bf_start_pct',p.bf_start_pct,'number','56px') : `<span style="font-size:12px;color:var(--t1)">${p.bf_start_pct??'—'}</span>`;
-        const bfEndCell   = canEdit ? msInp(pid,'bf_end_pct',  p.bf_end_pct,  'number','56px') : `<span style="font-size:12px;color:var(--f3)">${p.bf_end_pct??'—'}</span>`;
-
-        return `
-          ${yearChange ? `<div style="grid-column:1/-1;height:1px;background:var(--bdr);margin:4px 0"></div>` : ''}
-          <div style="display:grid;grid-template-columns:auto 100px 1fr auto auto auto auto;gap:8px;align-items:center;padding:8px 6px;border-radius:6px;transition:background .15s"
-            onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'">
-            <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0"></div>
-            <div>
-              <div style="font-weight:800;font-size:13px;color:var(--t0)">${p.label_short}</div>
-              <div style="font-size:9.5px;color:var(--t3);margin-top:1px">${weeks}</div>
-              <div style="font-size:9.5px;color:var(--t3)">${dateRange}</div>
+            <div class="ms-gate ms-gate-fail">
+              <div class="ms-gate-hd">⚠️ Gate Fail</div>
+              <div class="ms-gate-txt">${m.gate_fail || '—'}</div>
             </div>
-            <div style="min-width:0">${focusCell}</div>
-            <div style="text-align:center;padding:0 4px">${bbStartCell}</div>
-            <div style="text-align:center;padding:0 4px">${bbEndCell}</div>
-            <div style="text-align:center;padding:0 4px">${bfStartCell}</div>
-            <div style="text-align:center;padding:0 4px">${bfEndCell}</div>
-          </div>`;
-      }).join('')}
+          </div>
+          <details class="ms-verif">
+            <summary>Verifikasi</summary>
+            <div class="ms-verif-body">${m.verification || '—'}</div>
+          </details>
+        </div>
+      </div>`;
+    }).join('');
 
-      <div id="ms-save-bar" style="display:none;position:sticky;bottom:0;background:var(--bg1);border-top:2px solid var(--acc);padding:.75rem 6px;margin-top:8px;display:flex;align-items:center;gap:10px">
-        <button onclick="saveMsChanges()" style="padding:7px 18px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">💾 Simpan Semua Perubahan</button>
-        <button onclick="discardMsChanges()" style="padding:7px 14px;background:var(--bg3);color:var(--t2);border:1px solid var(--bdr);border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">✕ Batal</button>
-        <span id="ms-save-msg" style="font-size:11px;color:var(--t3)"></span>
+    return `<div class="ms-mc-block">
+      <div class="ms-mc-header">
+        <div class="ms-mc-dot" style="background:${mcColor}"></div>
+        <div class="ms-mc-label" style="color:${mcColor}">${mcLabel}</div>
+        <div class="ms-mc-progress">${doneCount}/${items.length} done</div>
       </div>
+      <div class="ms-cards">${cards}</div>
     </div>`;
+  }).join('');
+
+  return `<div class="ms-page">
+    <div class="ms-page-hd">
+      <div>
+        <div class="ms-page-title">🏆 Protocol Milestones</div>
+        <div class="ms-page-sub">${ms.length} gate milestones · 2026–2030</div>
+      </div>
+      <div class="ms-legend">
+        <span class="ms-status done">✓ Done</span>
+        <span class="ms-status soon">≤90d</span>
+        <span class="ms-status overdue">Overdue</span>
+        <span class="ms-status pending">Pending</span>
+      </div>
+    </div>
+    ${mcBlocks}
+  </div>`;
 }
 
 // ── PANEL: DOCS ──
