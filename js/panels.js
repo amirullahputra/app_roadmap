@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=30';
-import { supa, updateTimelineRow } from './supabase.js?v=30';
+} from './state.js?v=31';
+import { supa, updateTimelineRow } from './supabase.js?v=31';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -625,56 +625,55 @@ function pMilestones(){
     const mcLabel = { MC1:'MC1 — Reset Metabolisme', MC2:'MC2 — Recovery Sprint', MC3:'MC3 — Aerobic Base', MC4:'MC4 — 70.3 Race Build', MC5:'MC5 — Full Ironman' }[mc] || mc;
     const doneCount = items.filter(m => m.status === 'done').length;
 
-    const cards = items.map((m, idx) => {
+    const cards = items.map((m) => {
       const cat = MS_CAT[m.category] || { icon:'📌', label:m.category, color:'var(--t2)', bg:'var(--bg3)', bdr:'var(--bdr)' };
       const dateTarget = m.date_target ? new Date(m.date_target) : null;
       const days = dateTarget ? Math.ceil((dateTarget - today) / (1000*60*60*24)) : null;
       const isPast = days !== null && days < 0;
       const isDone = m.status === 'done';
       const isFailed = m.status === 'failed';
-      const isLast = idx === items.length - 1;
 
-      let statusCls, statusTxt, nodeColor, nodeBg;
+      let statusCls, statusTxt, cardBdr;
       if(isDone){
-        statusCls='done'; statusTxt='✓ Done'; nodeColor='var(--f3)'; nodeBg='var(--f3-bg)';
+        statusCls='done'; statusTxt='✓ Done'; cardBdr='var(--f3)';
       } else if(isFailed){
-        statusCls='failed'; statusTxt='✕ Failed'; nodeColor='var(--warn)'; nodeBg='var(--warn-bg)';
+        statusCls='failed'; statusTxt='✕ Failed'; cardBdr='var(--warn)';
       } else if(isPast){
-        statusCls='overdue'; statusTxt='Overdue'; nodeColor='var(--warn)'; nodeBg='var(--warn-bg)';
+        statusCls='overdue'; statusTxt='⚠ Overdue'; cardBdr='var(--warn)';
       } else if(days !== null && days <= 90){
-        statusCls='soon'; statusTxt=`${days}d`; nodeColor='var(--f2)'; nodeBg='var(--f2-bg)';
+        statusCls='soon'; statusTxt=`${days}d`; cardBdr='var(--f2)';
       } else {
-        statusCls='pending'; statusTxt=''; nodeColor='var(--bdr2)'; nodeBg='transparent';
+        statusCls='pending'; statusTxt='Pending'; cardBdr='var(--bdr)';
       }
 
       const mo = dateTarget ? dateTarget.toLocaleDateString('id-ID',{month:'short',year:'numeric'}) : '—';
       const qShort = m.quarter_ref ? m.quarter_ref.replace('_',' ') : '';
 
-      return `<div class="ms-row2${isDone?' ms-row2-done':''}">
-        <div class="ms-col-left">
-          <div class="ms-node2" style="background:${nodeColor};border-color:${nodeColor}"></div>
-          ${!isLast ? `<div class="ms-line2"></div>` : ''}
-        </div>
-        <div class="ms-col-right">
-          <div class="ms-row2-top">
-            <span class="ms-cat2" style="color:${cat.color}">${cat.icon} ${cat.label}</span>
-            <span class="ms-id2">${m.milestone_id}</span>
-            <span class="ms-qmo">${qShort} · ${mo}</span>
-            ${statusTxt ? `<span class="ms-st2 ms-st2-${statusCls}">${statusTxt}</span>` : ''}
+      return `<div style="background:var(--bg1);border:1.5px solid ${cardBdr};border-radius:var(--r2);padding:1rem;margin-bottom:.75rem;opacity:${isDone?'.65':'1'}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.625rem;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="background:${cat.bg};border:1px solid ${cat.bdr};color:${cat.color};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">${cat.icon} ${cat.label}</span>
+            <span style="font-size:10px;font-weight:700;color:var(--t3)">${m.milestone_id}</span>
+            <span style="font-size:10px;color:var(--t3)">${qShort} · ${mo}</span>
           </div>
-          <div class="ms-title2">${m.label}</div>
-          <div class="ms-desc2">${m.description || ''}</div>
-          <details class="ms-detail2">
-            <summary>Gate &amp; Verifikasi</summary>
-            <div class="ms-detail2-body">
-              <div class="ms-gate2">
-                <div class="ms-gate2-pass"><span class="ms-gate2-lbl">✓ Pass</span>${m.gate_pass||'—'}</div>
-                <div class="ms-gate2-fail"><span class="ms-gate2-lbl">✕ Fail</span>${m.gate_fail||'—'}</div>
-              </div>
-              <div class="ms-verif2"><span class="ms-gate2-lbl">Verif</span>${m.verification||'—'}</div>
-            </div>
-          </details>
+          <span class="ms-status ${statusCls}">${statusTxt}</span>
         </div>
+        <div style="font-size:14px;font-weight:800;color:var(--t0);margin-bottom:4px">${m.label}</div>
+        <div style="font-size:11px;color:var(--t2);line-height:1.5;margin-bottom:.75rem">${m.description || ''}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div style="background:var(--f3-bg);border:1px solid var(--f3-bdr);border-radius:var(--r);padding:.5rem .75rem">
+            <div style="font-size:9px;font-weight:700;color:var(--f3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">✓ Gate Pass</div>
+            <div style="font-size:11px;color:var(--t1)">${m.gate_pass || '—'}</div>
+          </div>
+          <div style="background:var(--warn-bg);border:1px solid var(--warn-bdr);border-radius:var(--r);padding:.5rem .75rem">
+            <div style="font-size:9px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">✕ Gate Fail</div>
+            <div style="font-size:11px;color:var(--t1)">${m.gate_fail || '—'}</div>
+          </div>
+        </div>
+        ${m.verification ? `<div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:.5rem .75rem">
+          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Verifikasi</div>
+          <div style="font-size:11px;color:var(--t2)">${m.verification}</div>
+        </div>` : ''}
       </div>`;
     }).join('');
 
