@@ -17,9 +17,9 @@ window.addEventListener('unhandledrejection', e => {
   </div>`;
 });
 
-import { S, buildIndexes, getWeekNum, getWeekStart, semesterRollup, getAllSemesterIds } from './state.js?v=17';
-import { supa, restFetch, updateAuthUI, closeAuthModal, onAuthBtnClick, doLogin } from './supabase.js?v=17';
-import { render } from './panels.js?v=17';
+import { S, buildIndexes, getWeekNum, getWeekStart, quarterRollup, getAllPeriodIds } from './state.js?v=18';
+import { supa, restFetch, updateAuthUI, closeAuthModal, onAuthBtnClick, doLogin } from './supabase.js?v=18';
+import { render } from './panels.js?v=18';
 
 // Bind auth handlers to window (called from HTML onclick)
 window.closeAuthModal = closeAuthModal;
@@ -41,13 +41,13 @@ window.doLogin = doLogin;
 
   S.currentWeek = getWeekNum();
 
-  // Default selectedQ = active semester today
-  const semIds = getAllSemesterIds();
-  if(semIds.length){
+  // Default selectedQ = active period today
+  const periodIds = getAllPeriodIds();
+  if(periodIds.length){
     const today = new Date();
     const active = S.timeline.find(p => today >= new Date(p.date_start) && today <= new Date(p.date_end));
-    S.selectedQ = active?.semester_id || semIds[0];
-    S.currentQuarter = semesterRollup(S.selectedQ);
+    S.selectedQ = active?.period_id || periodIds[0];
+    S.currentQuarter = quarterRollup(S.selectedQ);
   }
 
   // Event listeners

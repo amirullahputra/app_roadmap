@@ -22,7 +22,6 @@ export const S = {
   user: null,
   timeline: [],
   byPeriod: {},
-  bySemester: {},
   activeDoc: 'TARGET',
   selectedQ: null,
   latestBodyComp: null,
@@ -55,37 +54,31 @@ export function getWeekStart(){
 
 // ── DERIVATIONS ──
 export function buildIndexes(){
-  S.byPeriod   = Object.fromEntries(S.timeline.map(r => [r.period_id, r]));
-  S.bySemester = {};
-  for(const r of S.timeline){
-    if(!r.semester_id) continue;
-    (S.bySemester[r.semester_id] ||= []).push(r);
-  }
+  S.byPeriod = Object.fromEntries(S.timeline.map(r => [r.period_id, r]));
 }
 
 function fmtDateID(d){ if(!d) return ''; return new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }); }
 
-export function semesterRollup(semId){
-  const rows = S.bySemester[semId];
-  if(!rows?.length) return null;
-  const first = rows[0], last = rows[rows.length-1];
-  const weeks = (last.week_end && first.week_start) ? (last.week_end - first.week_start + 1) : null;
+export function quarterRollup(periodId){
+  const r = S.byPeriod[periodId];
+  if(!r) return null;
+  const weeks = (r.week_start && r.week_end) ? (r.week_end - r.week_start + 1) : null;
   return {
-    quarter_id: semId,
-    phase_type: first.focus_roadmap || '',
-    window_raw: (first.date_start && last.date_end)
-                ? `${fmtDateID(first.date_start)} → ${fmtDateID(last.date_end)}${weeks ? ` (${weeks} minggu)` : ''}`
+    quarter_id: periodId,
+    phase_type: r.focus_roadmap || '',
+    window_raw: (r.date_start && r.date_end)
+                ? `${fmtDateID(r.date_start)} → ${fmtDateID(r.date_end)}${weeks ? ` (${weeks} minggu)` : ''}`
                 : '',
     total_weeks: weeks,
-    bb_start: first.bb_start_kg,
-    bb_end:   last.bb_end_kg,
-    bf_start: first.bf_start_pct,
-    bf_end:   last.bf_end_pct,
+    bb_start: r.bb_start_kg,
+    bb_end:   r.bb_end_kg,
+    bf_start: r.bf_start_pct,
+    bf_end:   r.bf_end_pct,
   };
 }
 
-export function getAllSemesterIds(){
-  return Object.keys(S.bySemester);
+export function getAllPeriodIds(){
+  return S.timeline.map(r => r.period_id).filter(Boolean);
 }
 
 function parseMilestones(row){
@@ -106,19 +99,15 @@ function parseMilestones(row){
   }));
 }
 
-export function getMilestonesForSemester(semId){
-  const rows = S.bySemester[semId] || [];
-  const all = rows.flatMap(r => parseMilestones(r).map(m => ({...m, period_id: r.period_id})));
-  return all.sort((a,b) => (parseInt(String(a.week_label).replace(/\D/g,''))||0) - (parseInt(String(b.week_label).replace(/\D/g,''))||0));
+export function getMilestonesForPeriod(periodId){
+  const row = S.byPeriod[periodId];
+  if(!row) return [];
+  return parseMilestones(row);
 }
 
 export function getDocContent(qid, docType){
   const col = 'content_' + docType.toLowerCase() + '_md';
-  let row = S.byPeriod[qid];
-  if(!row){
-    const rows = S.bySemester[qid] || [];
-    row = rows.find(r => r[col]) || rows[0];
-  }
+  const row = S.byPeriod[qid];
   return row?.[col] || '';
 }
 

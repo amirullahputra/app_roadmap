@@ -6,9 +6,9 @@ import {
   TARGET_BF_LO, TARGET_BF_HI, TARGET_LBM,
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
-  semesterRollup, getAllSemesterIds, getMilestonesForSemester, getDocContent, renderMd,
-} from './state.js?v=17';
-import { supa } from './supabase.js?v=17';
+  quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
+} from './state.js?v=18';
+import { supa } from './supabase.js?v=18';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -48,7 +48,7 @@ export function render(){ renderTabNav(); renderPanel(); }
 window.setTab = function(i){ S.tab=i; render(); };
 window.selectQ = function(qid){
   S.selectedQ = qid;
-  try { localStorage.setItem('vhm.activeSemester', qid); } catch(e){}
+  try { localStorage.setItem('vhm.activeQuarter', qid); } catch(e){}
   render();
 };
 window.selectQDoc = window.selectQ;
@@ -69,7 +69,7 @@ function renderQuarterCardRow(){
   const visible   = S.timeline.slice(startIdx, startIdx + 4);
 
   const cards = visible.map(p => {
-    const sel = S.selectedQ === p.semester_id;
+    const sel = S.selectedQ === p.period_id;
     const hasBB = p.bb_start_kg != null;
     const hasBF = p.bf_start_pct != null;
     const bbRange = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
@@ -78,16 +78,15 @@ function renderQuarterCardRow(){
     const dotColor = hasBB ? 'var(--acc)' : 'var(--t3)';
     const weeks   = (p.week_start && p.week_end) ? `W${p.week_start}–W${p.week_end}` : 'pre-protokol';
     const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
-    const semLabel = p.semester_id ? p.semester_id.replace('_',' ') : '—';
     const phaseShort = phase ? (phase.length > 70 ? phase.slice(0, 67) + '...' : phase) : '';
 
-    return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${p.semester_id || p.period_id}')" style="cursor:pointer">
+    return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${p.period_id}')" style="cursor:pointer">
       <div class="ph-tag" style="color:${dotColor}">
         <div class="ph-dot" style="background:${dotColor}"></div>
         ${p.label_short}
       </div>
       <div class="ph-name">${p.label_short}</div>
-      <div class="ph-desc" style="font-size:10.5px">${weeks} · ${dateRange} · <span style="color:var(--t3)">${semLabel}</span></div>
+      <div class="ph-desc" style="font-size:10.5px">${weeks} · ${dateRange}</div>
       <div class="ph-grid" style="grid-template-columns:1fr 1fr">
         <div class="ph-stat"><div class="ph-stat-l">BB Target</div><div class="ph-stat-v" style="color:${hasBB?'var(--acc)':'var(--t3)'};font-size:13px">${bbRange}</div></div>
         <div class="ph-stat"><div class="ph-stat-l">BF Target</div><div class="ph-stat-v" style="color:${hasBF?'var(--acc)':'var(--t3)'};font-size:13px">${bfRange}</div></div>
@@ -267,12 +266,12 @@ function pOverview(){
 }
 
 // ── CHECKPOINTS ──
-function renderCheckpoints(semId){
-  if(!semId) return '';
-  const ms = getMilestonesForSemester(semId);
+function renderCheckpoints(periodId){
+  if(!periodId) return '';
+  const ms = getMilestonesForPeriod(periodId);
   if(!ms.length){
     return `<div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">📍 Checkpoints — ${semId.replace('_',' ')}</div>
+      <div class="card-title">📍 Checkpoints — ${periodId.replace('_',' ')}</div>
       <div class="empty-state" style="padding:1.5rem 1rem">
         <div class="empty-ico">📍</div>
         <div class="empty-txt">Belum ada checkpoint data untuk quarter ini</div>
@@ -280,7 +279,7 @@ function renderCheckpoints(semId){
     </div>`;
   }
   return `<div class="card" style="margin-bottom:.75rem">
-    <div class="card-title">📍 Checkpoints — ${semId.replace('_',' ')} · ${ms.length} milestone</div>
+    <div class="card-title">📍 Checkpoints — ${periodId.replace('_',' ')} · ${ms.length} milestone</div>
     ${ms.map((m,i)=>`
       <div class="ms-row">
         <div class="ms-dot" style="background:hsl(${200+i*25},65%,55%)"></div>
@@ -298,8 +297,8 @@ function renderCheckpoints(semId){
 
 // ── PANEL: MILESTONES ──
 function pMilestones(){
-  const semId = S.selectedQ || getAllSemesterIds()[0];
-  const q = semId ? semesterRollup(semId) : null;
+  const periodId = S.selectedQ || getAllPeriodIds()[0];
+  const q = periodId ? quarterRollup(periodId) : null;
   if(!q) return `<div class="card"><div class="empty-state"><div class="empty-ico">📍</div><div class="empty-txt">Data belum tersedia</div></div></div>`;
 
   return `
@@ -331,9 +330,9 @@ function pMilestones(){
           p.focus_pep && `<span style="background:var(--f1-bg);color:var(--f1);padding:2px 7px;border-radius:10px;font-size:10px">💉 ${p.focus_pep}</span>`,
           p.focus_exercise && `<span style="background:var(--f3-bg);color:var(--f3);padding:2px 7px;border-radius:10px;font-size:10px">🏋️ ${p.focus_exercise}</span>`
         ].filter(Boolean).join(' ');
-        const selected = p.semester_id === S.selectedQ;
+        const selected = p.period_id === S.selectedQ;
         return `${yearChange ? `<div style="height:8px;border-top:1px dashed var(--bdr);margin:8px 0 4px"></div>` : ''}
-        <div onclick="selectQ('${p.semester_id || p.period_id}')" style="display:grid;grid-template-columns:auto 90px 1fr 180px;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--bdr);cursor:pointer;background:${selected?'var(--acc-bg)':'transparent'};border-radius:6px;padding-left:6px;padding-right:6px">
+        <div onclick="selectQ('${p.period_id}')" style="display:grid;grid-template-columns:auto 90px 1fr 180px;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--bdr);cursor:pointer;background:${selected?'var(--acc-bg)':'transparent'};border-radius:6px;padding-left:6px;padding-right:6px">
           <div style="width:10px;height:10px;border-radius:50%;background:${color};margin-top:5px"></div>
           <div>
             <div style="font-weight:800;font-size:13px;color:var(--t0)">${p.label_short}</div>
@@ -353,7 +352,7 @@ function pMilestones(){
 
 // ── PANEL: DOCS ──
 function pDocs(){
-  const qid = S.selectedQ || getAllSemesterIds()[0];
+  const qid = S.selectedQ || getAllPeriodIds()[0];
   if(!qid) return `<div class="card"><div class="empty-state"><div class="empty-ico">📄</div><div>Loading...</div></div></div>`;
   const content = getDocContent(qid, S.activeDoc);
   return `
