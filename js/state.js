@@ -1,6 +1,6 @@
-﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// STATE â€” constants, S object, utils, derivations, markdown
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+// STATE — constants, S object, utils, derivations, markdown
+// ══════════════════════════════════════════════════════════
 
 export const APP_PEP      = 'https://amirullahputra.github.io/app_pep/';
 export const APP_EXERCISE = 'https://amirullahputra.github.io/app_exercise/';
@@ -9,13 +9,13 @@ export const TARGET_BF_LO = 10, TARGET_BF_HI = 15;
 export const TARGET_LBM   = 55;
 
 export const RACES = [
-  { name:'HM JAKIM', date:'2026-06-14', icon:'ðŸƒ', dist:'21.1 km' },
-  { name:'70.3 Ironman', date:'2029-01-01', icon:'ðŸŠðŸš´ðŸƒ', dist:'113 km' },
+  { name:'HM JAKIM', date:'2026-06-14', icon:'🏃', dist:'21.1 km' },
+  { name:'70.3 Ironman', date:'2029-01-01', icon:'🏊🚴🏃', dist:'113 km' },
 ];
 export const Q_COLORS  = ['var(--f1)','var(--acc)','var(--f3)','var(--hor)','var(--f2)','var(--cns)','var(--inf)','var(--f1)'];
 export const DOC_TYPES = ['TARGET','PEPTIDE','GYM','CARDIO','NUTRISI','VITAMIN','MACROCYCLE'];
-export const DOC_ICONS = { TARGET:'ðŸŽ¯', PEPTIDE:'ðŸ’‰', GYM:'ðŸ‹ï¸', CARDIO:'ðŸƒ', NUTRISI:'ðŸ½ï¸', VITAMIN:'ðŸ’Š', MACROCYCLE:'ðŸ“–' };
-export const TABS = ['ðŸ  Overview','ðŸ“… Milestones','ðŸ“„ Docs','ðŸ“Š Body Comp','ðŸ Race Goals'];
+export const DOC_ICONS = { TARGET:'🎯', PEPTIDE:'💉', GYM:'🏋️', CARDIO:'🏃', NUTRISI:'🍽️', VITAMIN:'💊', MACROCYCLE:'📖' };
+export const TABS = ['🏠 Overview','📅 Milestones','📄 Docs','📊 Body Comp','🏁 Race Goals'];
 
 export const S = {
   tab: 0,
@@ -34,9 +34,9 @@ export const S = {
   docCache: {},
 };
 
-// â”€â”€ UTILS â”€â”€
+// ── UTILS ──
 export function daysUntil(d){ return Math.ceil((new Date(d)-new Date())/(1000*60*60*24)); }
-export function fmtDate(d){ if(!d) return 'â€”'; return new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); }
+export function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); }
 export function fmtMonthShort(dateStr){
   if(!dateStr) return '';
   return new Date(dateStr).toLocaleDateString('id-ID', { month:'short', year:'2-digit' });
@@ -54,7 +54,7 @@ export function getWeekStart(){
   return mon.toISOString().split('T')[0];
 }
 
-// â”€â”€ DERIVATIONS â”€â”€
+// ── DERIVATIONS ──
 export function buildIndexes(){
   S.byPeriod = Object.fromEntries(S.timeline.map(r => [r.period_id, r]));
 }
@@ -69,7 +69,7 @@ export function quarterRollup(periodId){
     quarter_id: periodId,
     phase_type: r.focus_roadmap || '',
     window_raw: (r.date_start && r.date_end)
-                ? `${fmtDateID(r.date_start)} â†’ ${fmtDateID(r.date_end)}${weeks ? ` (${weeks} minggu)` : ''}`
+                ? `${fmtDateID(r.date_start)} → ${fmtDateID(r.date_end)}${weeks ? ` (${weeks} minggu)` : ''}`
                 : '',
     total_weeks: weeks,
     bb_start: r.bb_start_kg,
@@ -113,7 +113,7 @@ export function getDocContent(qid, docType){
   return row?.[col] || '';
 }
 
-// â”€â”€ MARKDOWN â”€â”€
+// ── MARKDOWN ──
 function renderInline(text){
   return text
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
@@ -123,7 +123,7 @@ function renderInline(text){
 }
 
 export function renderMd(md){
-  if(!md) return `<div class="empty-state"><div class="empty-ico">ðŸ“„</div><div class="empty-txt">Belum ada konten untuk quarter ini.</div></div>`;
+  if(!md) return `<div class="empty-state"><div class="empty-ico">📄</div><div class="empty-txt">Belum ada konten untuk quarter ini.</div></div>`;
   try {
     const lines = md.split('\n');
     let html = '';

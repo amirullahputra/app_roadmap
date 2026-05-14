@@ -1,34 +1,34 @@
-﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// MAIN â€” entry point, error boundary, init
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════
+// MAIN — entry point, error boundary, init
+// ══════════════════════════════════════════════════════════
 
 window.addEventListener('error', e => {
   const root = document.getElementById('panels-root');
   if(root) root.innerHTML = `<div style="padding:1.5rem;border:2px solid #EF4444;border-radius:8px;background:#FEE2E2;margin:1rem">
-    <div style="font-size:14px;font-weight:800;color:#991B1B;margin-bottom:8px">ðŸ”¥ JS Error</div>
+    <div style="font-size:14px;font-weight:800;color:#991B1B;margin-bottom:8px">🔥 JS Error</div>
     <div style="font-family:monospace;font-size:11.5px;color:#1A2140;white-space:pre-wrap;background:white;padding:10px;border-radius:6px">${e.message}\n  at ${e.filename||'?'}:${e.lineno||'?'}:${e.colno||'?'}</div>
   </div>`;
 });
 window.addEventListener('unhandledrejection', e => {
   const root = document.getElementById('panels-root');
   if(root) root.innerHTML = `<div style="padding:1.5rem;border:2px solid #EF4444;border-radius:8px;background:#FEE2E2;margin:1rem">
-    <div style="font-size:14px;font-weight:800;color:#991B1B;margin-bottom:8px">ðŸ”¥ Promise Rejection</div>
+    <div style="font-size:14px;font-weight:800;color:#991B1B;margin-bottom:8px">🔥 Promise Rejection</div>
     <div style="font-family:monospace;font-size:11.5px;color:#1A2140;white-space:pre-wrap;background:white;padding:10px;border-radius:6px">${e.reason?.message||e.reason||'unknown'}</div>
   </div>`;
 });
 
-import { S, buildIndexes, getWeekNum, getWeekStart, quarterRollup, getAllPeriodIds } from './state.js?v=24';
-import { supa, restFetch, updateAuthUI, closeAuthModal, onAuthBtnClick, doLogin } from './supabase.js?v=24';
-import { render } from './panels.js?v=24';
+import { S, buildIndexes, getWeekNum, getWeekStart, quarterRollup, getAllPeriodIds } from './state.js?v=25';
+import { supa, restFetch, updateAuthUI, closeAuthModal, onAuthBtnClick, doLogin } from './supabase.js?v=25';
+import { render } from './panels.js?v=25';
 
 // Bind auth handlers to window (called from HTML onclick)
 window.closeAuthModal = closeAuthModal;
 window.onAuthBtnClick = onAuthBtnClick;
 window.doLogin = doLogin;
 
-// â”€â”€ INIT â”€â”€
+// ── INIT ──
 (async () => {
-  document.getElementById('panels-root').innerHTML = '<div style="padding:1rem;color:grey;font-size:12px">Loadingâ€¦</div>';
+  document.getElementById('panels-root').innerHTML = '<div style="padding:1rem;color:grey;font-size:12px">Loading…</div>';
 
   // Load master_timeline (single source of truth)
   try {
@@ -58,7 +58,7 @@ window.doLogin = doLogin;
     if(e.key === 'Enter') window.doLogin();
   });
 
-  // Auth listener â€” loads user-specific data on login
+  // Auth listener — loads user-specific data on login
   supa.auth.onAuthStateChange(async (event, session) => {
     S.user = session?.user || null;
     updateAuthUI(S.user);
