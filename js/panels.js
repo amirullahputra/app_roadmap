@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=18';
-import { supa } from './supabase.js?v=18';
+} from './state.js?v=19';
+import { supa, updateTimelineRow } from './supabase.js?v=19';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -54,6 +54,76 @@ window.selectQ = function(qid){
 window.selectQDoc = window.selectQ;
 window.setActiveDoc = function(doc){ S.activeDoc=doc; renderPanel(); };
 
+// ── EDIT HANDLERS ──
+window.startEdit = function(periodId){
+  S.editingPeriod = S.editingPeriod === periodId ? null : periodId;
+  renderQuarterCardsContainer();
+  // scroll ke form
+  if(S.editingPeriod){
+    setTimeout(()=>{
+      const el = document.getElementById(`edit-form-${periodId}`);
+      if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 50);
+  }
+};
+
+window.cancelEdit = function(){
+  S.editingPeriod = null;
+  renderQuarterCardsContainer();
+};
+
+window.saveEdit = async function(periodId){
+  const msg = document.getElementById('ef-msg');
+  if(msg) msg.textContent = '⏳ Menyimpan...';
+
+  const g = id => document.getElementById(id)?.value ?? null;
+  const num = id => { const v = g(id); return (v===''||v===null) ? null : parseFloat(v); };
+  const int = id => { const v = g(id); return (v===''||v===null) ? null : parseInt(v); };
+
+  const fields = {
+    label_short:          g('ef-label_short')   || null,
+    date_start:           g('ef-date_start')    || null,
+    date_end:             g('ef-date_end')      || null,
+    week_start:           int('ef-week_start'),
+    week_end:             int('ef-week_end'),
+    bb_start_kg:          num('ef-bb_start_kg'),
+    bb_end_kg:            num('ef-bb_end_kg'),
+    bf_start_pct:         num('ef-bf_start_pct'),
+    bf_end_pct:           num('ef-bf_end_pct'),
+    focus_roadmap:        g('ef-focus_roadmap') || null,
+    focus_pep:            g('ef-focus_pep')     || null,
+    focus_exercise:       g('ef-focus_exercise')|| null,
+    content_target_md:    g('ef-content_target_md')  || null,
+    content_peptide_md:   g('ef-content_peptide_md') || null,
+    content_gym_md:       g('ef-content_gym_md')     || null,
+    content_cardio_md:    g('ef-content_cardio_md')  || null,
+    content_nutrisi_md:   g('ef-content_nutrisi_md') || null,
+    content_vitamin_md:   g('ef-content_vitamin_md') || null,
+  };
+
+  // Remove null values yang tidak perlu di-update (biarkan DB value existing)
+  // Tapi tetap kirim explicit null kalau user kosongkan field
+  try {
+    const updated = await updateTimelineRow(periodId, fields);
+    // Patch in-memory S.timeline + S.byPeriod
+    const idx = S.timeline.findIndex(r => r.period_id === periodId);
+    if(idx >= 0 && updated){
+      S.timeline[idx] = { ...S.timeline[idx], ...updated };
+      S.byPeriod[periodId] = S.timeline[idx];
+    } else if(idx >= 0){
+      S.timeline[idx] = { ...S.timeline[idx], ...fields };
+      S.byPeriod[periodId] = S.timeline[idx];
+    }
+    if(msg) { msg.textContent = '✅ Tersimpan!'; msg.style.color = 'var(--f3)'; }
+    setTimeout(()=>{
+      S.editingPeriod = null;
+      render();
+    }, 800);
+  } catch(e){
+    if(msg) { msg.textContent = '❌ Error: ' + e.message; msg.style.color = 'var(--warn)'; }
+  }
+};
+
 // ── QUARTER CARD ROW ──
 function pickActivePeriodIdx(periods){
   const today = new Date();
@@ -62,14 +132,89 @@ function pickActivePeriodIdx(periods){
   return Math.max(0, periods.findIndex(p => p.period_id === 'Q3_2026'));
 }
 
+function inp(id, label, val, type='text', placeholder=''){
+  return `<div>
+    <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">${label}</div>
+    <input id="${id}" type="${type}" value="${val??''}" placeholder="${placeholder}"
+      style="width:100%;background:var(--bg0);border:1.5px solid var(--bdr2);border-radius:var(--r);color:var(--t0);padding:5px 8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none;box-sizing:border-box"
+      onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--bdr2)'">
+  </div>`;
+}
+
+function ta(id, label, val){
+  return `<div style="grid-column:1/-1">
+    <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">${label}</div>
+    <textarea id="${id}" rows="3"
+      style="width:100%;background:var(--bg0);border:1.5px solid var(--bdr2);border-radius:var(--r);color:var(--t0);padding:5px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;resize:vertical;box-sizing:border-box"
+      onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--bdr2)'">${(val||'').replace(/</g,'&lt;')}</textarea>
+  </div>`;
+}
+
+function renderEditForm(p){
+  const pid = p.period_id;
+  return `
+  <div id="edit-form-${pid}" style="background:var(--bg2);border:2px solid var(--acc);border-radius:var(--r2);padding:1rem;margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem">
+      <div style="font-size:13px;font-weight:800;color:var(--acc)">✏️ Edit — ${p.label_short}</div>
+      <button onclick="cancelEdit()" style="background:var(--bg3);border:1px solid var(--bdr);color:var(--t2);padding:4px 10px;border-radius:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">✕ Batal</button>
+    </div>
+
+    <div style="font-size:10px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Identitas</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:1rem">
+      ${inp(`ef-label_short`,   'Label Short',   p.label_short)}
+      ${inp(`ef-date_start`,    'Date Start',    p.date_start, 'date')}
+      ${inp(`ef-date_end`,      'Date End',      p.date_end,   'date')}
+      ${inp(`ef-week_start`,    'Week Start',    p.week_start, 'number')}
+      ${inp(`ef-week_end`,      'Week End',      p.week_end,   'number')}
+    </div>
+
+    <div style="font-size:10px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Target Body</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:1rem">
+      ${inp(`ef-bb_start_kg`,   'BB Start (kg)', p.bb_start_kg, 'number', '86')}
+      ${inp(`ef-bb_end_kg`,     'BB End (kg)',   p.bb_end_kg,   'number', '75')}
+      ${inp(`ef-bf_start_pct`,  'BF Start (%)',  p.bf_start_pct,'number', '24')}
+      ${inp(`ef-bf_end_pct`,    'BF End (%)',    p.bf_end_pct,  'number', '18')}
+    </div>
+
+    <div style="font-size:10px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Focus & Phase</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:1rem">
+      ${inp(`ef-focus_roadmap`, 'Focus Roadmap', p.focus_roadmap, 'text', 'misal: Metabolic Reset')}
+      ${inp(`ef-focus_pep`,     'Focus Peptide', p.focus_pep,     'text', 'misal: Retatrutide')}
+      ${inp(`ef-focus_exercise`,'Focus Exercise',p.focus_exercise,'text', 'misal: Hypertrophy')}
+    </div>
+
+    <div style="font-size:10px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Content Docs (Markdown)</div>
+    <div style="display:grid;gap:8px;margin-bottom:1rem">
+      ${ta(`ef-content_target_md`,  '🎯 Target MD',  p.content_target_md)}
+      ${ta(`ef-content_peptide_md`, '💉 Peptide MD', p.content_peptide_md)}
+      ${ta(`ef-content_gym_md`,     '🏋️ Gym MD',     p.content_gym_md)}
+      ${ta(`ef-content_cardio_md`,  '🏃 Cardio MD',  p.content_cardio_md)}
+      ${ta(`ef-content_nutrisi_md`, '🍽️ Nutrisi MD', p.content_nutrisi_md)}
+      ${ta(`ef-content_vitamin_md`, '💊 Vitamin MD', p.content_vitamin_md)}
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="saveEdit('${pid}')"
+        style="padding:8px 20px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">
+        💾 Simpan ke DB
+      </button>
+      <span id="ef-msg" style="font-size:11px;color:var(--t3)"></span>
+    </div>
+  </div>`;
+}
+
 function renderQuarterCardRow(){
   if(!S.timeline?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading periods…</div>';
+
+  const editing = S.editingPeriod ? renderEditForm(S.byPeriod[S.editingPeriod] || {}) : '';
+
   const activeIdx = pickActivePeriodIdx(S.timeline);
   const startIdx  = Math.max(0, Math.min(activeIdx, S.timeline.length - 4));
   const visible   = S.timeline.slice(startIdx, startIdx + 4);
 
   const cards = visible.map(p => {
     const sel = S.selectedQ === p.period_id;
+    const isEditing = S.editingPeriod === p.period_id;
     const hasBB = p.bb_start_kg != null;
     const hasBF = p.bf_start_pct != null;
     const bbRange = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
@@ -80,8 +225,12 @@ function renderQuarterCardRow(){
     const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
     const phaseShort = phase ? (phase.length > 70 ? phase.slice(0, 67) + '...' : phase) : '';
 
-    return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${p.period_id}')" style="cursor:pointer">
-      <div class="ph-tag" style="color:${dotColor}">
+    return `<div class="ph-card${sel?' sel-all':''}${isEditing?' editing-card':''}" onclick="selectQ('${p.period_id}')" style="cursor:pointer;position:relative">
+      ${S.user ? `<button onclick="event.stopPropagation();startEdit('${p.period_id}')"
+        style="position:absolute;top:8px;right:8px;background:${isEditing?'var(--acc)':'var(--bg3)'};border:1px solid ${isEditing?'var(--acc)':'var(--bdr)'};color:${isEditing?'#fff':'var(--t2)'};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;z-index:2">
+        ${isEditing?'✏️ Editing':'✏️'}
+      </button>` : ''}
+      <div class="ph-tag" style="color:${dotColor};padding-right:${S.user?'40px':'0'}">
         <div class="ph-dot" style="background:${dotColor}"></div>
         ${p.label_short}
       </div>
@@ -94,15 +243,13 @@ function renderQuarterCardRow(){
           <div class="ph-stat-l">Phase</div>
           <div class="ph-stat-v" style="font-size:11px;line-height:1.35" title="${(phase||'').replace(/"/g,'&quot;')}">${phaseShort || '<span style="color:var(--t3)">—</span>'}</div>
         </div>
-        ${p.focus_roadmap ? `<div class="ph-stat" style="grid-column:1/-1">
-          <div class="ph-stat-l">Focus</div>
-          <div class="ph-stat-v" style="font-size:10.5px;color:var(--acc);font-weight:700">${p.focus_roadmap}</div>
-        </div>` : ''}
       </div>
     </div>`;
   }).join('');
 
-  return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">${cards}</div>`;
+  return `
+    ${editing}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">${cards}</div>`;
 }
 
 // ── PANEL: OVERVIEW ──

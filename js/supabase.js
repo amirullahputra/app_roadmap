@@ -40,6 +40,39 @@ export function onAuthBtnClick(){
   else document.getElementById('auth-modal').classList.add('open');
 }
 
+// ── AUTH FETCH (untuk authed writes) ──
+function readJwt(){
+  try {
+    const projectRef = SUPA_URL.match(/https:\/\/([^.]+)/)?.[1];
+    const raw = localStorage.getItem(`sb-${projectRef}-auth-token`);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.access_token || null;
+  } catch(_){ return null; }
+}
+
+export async function updateTimelineRow(periodId, fields){
+  const jwt = readJwt();
+  if(!jwt) throw new Error('Tidak ada session — login dulu');
+  const url = `${SUPA_URL}/rest/v1/master_timeline?period_id=eq.${encodeURIComponent(periodId)}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      apikey: SUPA_KEY,
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(fields),
+  });
+  if(!res.ok){
+    const body = await res.text().catch(()=>'');
+    throw new Error(`PATCH master_timeline: HTTP ${res.status} ${body.slice(0,200)}`);
+  }
+  const data = await res.json().catch(()=>[]);
+  return data[0] || null;
+}
+
 export async function doLogin(){
   const email = document.getElementById('auth-user').value.trim();
   const pass  = document.getElementById('auth-pass').value;

@@ -30,6 +30,7 @@ export const S = {
   activeCardioLog: [],
   currentQuarter: null,
   currentWeek: 0,
+  editingPeriod: null,
 };
 
 // ── UTILS ──
