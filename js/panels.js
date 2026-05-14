@@ -1,16 +1,16 @@
-// ══════════════════════════════════════════════════════════
-// PANELS — all tab panels + render + window globals
-// ══════════════════════════════════════════════════════════
+﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// PANELS â€” all tab panels + render + window globals
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 import {
   S, APP_PEP, APP_EXERCISE,
   TARGET_BF_LO, TARGET_BF_HI, TARGET_LBM,
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=23';
-import { supa, updateTimelineRow } from './supabase.js?v=23';
+} from './state.js?v=24';
+import { supa, updateTimelineRow } from './supabase.js?v=24';
 
-// ── RENDER ──
+// â”€â”€ RENDER â”€â”€
 function renderTabNav(){
   document.getElementById('tab-nav').innerHTML = TABS.map((t,i)=>
     `<button class="tab-btn${S.tab===i?' act':''}" onclick="setTab(${i})">${t}</button>`
@@ -38,13 +38,13 @@ function renderPanel(){
   } catch(e) {
     console.error('renderPanel error:', e);
     document.getElementById('panels-root').innerHTML =
-      `<div class="card"><div class="empty-state"><div class="empty-ico">⚠️</div><div class="empty-txt">Error: ${e.message}</div></div></div>`;
+      `<div class="card"><div class="empty-state"><div class="empty-ico">âš ï¸</div><div class="empty-txt">Error: ${e.message}</div></div></div>`;
   }
 }
 
 export function render(){ renderTabNav(); renderPanel(); }
 
-// ── WINDOW GLOBALS (called from HTML onclick) ──
+// â”€â”€ WINDOW GLOBALS (called from HTML onclick) â”€â”€
 window.setTab = function(i){ S.tab=i; render(); };
 window.selectQ = function(qid){
   S.selectedQ = qid;
@@ -57,7 +57,7 @@ window.setActiveDoc = function(doc){
 };
 window.selectQDoc = window.selectQ;
 
-// ── EDIT HANDLERS ──
+// â”€â”€ EDIT HANDLERS â”€â”€
 window.startEdit = function(periodId){
   S.editingPeriod = S.editingPeriod === periodId ? null : periodId;
   renderQuarterCardsContainer();
@@ -70,7 +70,7 @@ window.startEdit = function(periodId){
   }
 };
 
-// ── MILESTONE INLINE EDIT ──
+// â”€â”€ MILESTONE INLINE EDIT â”€â”€
 const _msPending = {};  // { period_id: { field: value, ... } }
 
 window.msFieldChange = function(el){
@@ -85,14 +85,14 @@ window.msFieldChange = function(el){
   const bar = document.getElementById('ms-save-bar');
   if(bar) bar.style.display = 'flex';
   const msg = document.getElementById('ms-save-msg');
-  if(msg) msg.textContent = `${Object.keys(_msPending).length} quarter diubah — belum disimpan`;
+  if(msg) msg.textContent = `${Object.keys(_msPending).length} quarter diubah â€” belum disimpan`;
 };
 
 window.saveMsChanges = async function(){
   const msg = document.getElementById('ms-save-msg');
   const entries = Object.entries(_msPending);
   if(!entries.length) return;
-  if(msg){ msg.textContent = `⏳ Menyimpan ${entries.length} quarter...`; msg.style.color='var(--t3)'; }
+  if(msg){ msg.textContent = `â³ Menyimpan ${entries.length} quarter...`; msg.style.color='var(--t3)'; }
   const errs = [];
   for(const [pid, fields] of entries){
     try {
@@ -107,9 +107,9 @@ window.saveMsChanges = async function(){
     } catch(e){ errs.push(`${pid}: ${e.message}`); }
   }
   if(errs.length){
-    if(msg){ msg.textContent = '❌ ' + errs.join(' | '); msg.style.color='var(--warn)'; }
+    if(msg){ msg.textContent = 'âŒ ' + errs.join(' | '); msg.style.color='var(--warn)'; }
   } else {
-    if(msg){ msg.textContent = '✅ Semua tersimpan!'; msg.style.color='var(--f3)'; }
+    if(msg){ msg.textContent = 'âœ… Semua tersimpan!'; msg.style.color='var(--f3)'; }
     setTimeout(()=>render(), 800);
   }
 };
@@ -126,7 +126,7 @@ window.cancelEdit = function(){
 
 window.saveEdit = async function(periodId){
   const msg = document.getElementById('ef-msg');
-  if(msg) msg.textContent = '⏳ Menyimpan...';
+  if(msg) msg.textContent = 'â³ Menyimpan...';
 
   const g = id => document.getElementById(id)?.value ?? null;
   const num = id => { const v = g(id); return (v===''||v===null) ? null : parseFloat(v); };
@@ -166,17 +166,17 @@ window.saveEdit = async function(periodId){
       S.timeline[idx] = { ...S.timeline[idx], ...fields };
       S.byPeriod[periodId] = S.timeline[idx];
     }
-    if(msg) { msg.textContent = '✅ Tersimpan!'; msg.style.color = 'var(--f3)'; }
+    if(msg) { msg.textContent = 'âœ… Tersimpan!'; msg.style.color = 'var(--f3)'; }
     setTimeout(()=>{
       S.editingPeriod = null;
       render();
     }, 800);
   } catch(e){
-    if(msg) { msg.textContent = '❌ Error: ' + e.message; msg.style.color = 'var(--warn)'; }
+    if(msg) { msg.textContent = 'âŒ Error: ' + e.message; msg.style.color = 'var(--warn)'; }
   }
 };
 
-// ── QUARTER CARD ROW ──
+// â”€â”€ QUARTER CARD ROW â”€â”€
 function pickActivePeriodIdx(periods){
   const today = new Date();
   const idx = periods.findIndex(p => today >= new Date(p.date_start) && today <= new Date(p.date_end));
@@ -207,8 +207,8 @@ function renderEditForm(p){
   return `
   <div id="edit-form-${pid}" style="background:var(--bg2);border:2px solid var(--acc);border-radius:var(--r2);padding:1rem;margin-bottom:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem">
-      <div style="font-size:13px;font-weight:800;color:var(--acc)">✏️ Edit — ${p.label_short}</div>
-      <button onclick="cancelEdit()" style="background:var(--bg3);border:1px solid var(--bdr);color:var(--t2);padding:4px 10px;border-radius:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">✕ Batal</button>
+      <div style="font-size:13px;font-weight:800;color:var(--acc)">âœï¸ Edit â€” ${p.label_short}</div>
+      <button onclick="cancelEdit()" style="background:var(--bg3);border:1px solid var(--bdr);color:var(--t2);padding:4px 10px;border-radius:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">âœ• Batal</button>
     </div>
 
     <div style="font-size:10px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Identitas</div>
@@ -237,18 +237,18 @@ function renderEditForm(p){
 
     <div style="font-size:10px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Content Docs (Markdown)</div>
     <div style="display:grid;gap:8px;margin-bottom:1rem">
-      ${ta(`ef-content_target_md`,  '🎯 Target MD',  p.content_target_md)}
-      ${ta(`ef-content_peptide_md`, '💉 Peptide MD', p.content_peptide_md)}
-      ${ta(`ef-content_gym_md`,     '🏋️ Gym MD',     p.content_gym_md)}
-      ${ta(`ef-content_cardio_md`,  '🏃 Cardio MD',  p.content_cardio_md)}
-      ${ta(`ef-content_nutrisi_md`, '🍽️ Nutrisi MD', p.content_nutrisi_md)}
-      ${ta(`ef-content_vitamin_md`, '💊 Vitamin MD', p.content_vitamin_md)}
+      ${ta(`ef-content_target_md`,  'ðŸŽ¯ Target MD',  p.content_target_md)}
+      ${ta(`ef-content_peptide_md`, 'ðŸ’‰ Peptide MD', p.content_peptide_md)}
+      ${ta(`ef-content_gym_md`,     'ðŸ‹ï¸ Gym MD',     p.content_gym_md)}
+      ${ta(`ef-content_cardio_md`,  'ðŸƒ Cardio MD',  p.content_cardio_md)}
+      ${ta(`ef-content_nutrisi_md`, 'ðŸ½ï¸ Nutrisi MD', p.content_nutrisi_md)}
+      ${ta(`ef-content_vitamin_md`, 'ðŸ’Š Vitamin MD', p.content_vitamin_md)}
     </div>
 
     <div style="display:flex;gap:8px;align-items:center">
       <button onclick="saveEdit('${pid}')"
         style="padding:8px 20px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">
-        💾 Simpan ke DB
+        ðŸ’¾ Simpan ke DB
       </button>
       <span id="ef-msg" style="font-size:11px;color:var(--t3)"></span>
     </div>
@@ -256,7 +256,7 @@ function renderEditForm(p){
 }
 
 function renderQuarterCardRow(){
-  if(!S.timeline?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading periods…</div>';
+  if(!S.timeline?.length) return '<div style="color:var(--t3);font-size:11px;padding:10px">Loading periodsâ€¦</div>';
 
   const editing = S.editingPeriod ? renderEditForm(S.byPeriod[S.editingPeriod] || {}) : '';
 
@@ -269,12 +269,12 @@ function renderQuarterCardRow(){
     const isEditing = S.editingPeriod === p.period_id;
     const hasBB = p.bb_start_kg != null;
     const hasBF = p.bf_start_pct != null;
-    const bbRange = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
-    const bfRange = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
+    const bbRange = hasBB ? `${p.bb_start_kg}â†’${p.bb_end_kg} kg` : 'â€”';
+    const bfRange = hasBF ? `${p.bf_start_pct}â†’${p.bf_end_pct}%` : 'â€”';
     const phase = p.focus_roadmap || '';
     const dotColor = hasBB ? 'var(--acc)' : 'var(--t3)';
-    const weeks   = (p.week_start && p.week_end) ? `W${p.week_start}–W${p.week_end}` : 'pre-protokol';
-    const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
+    const weeks   = (p.week_start && p.week_end) ? `W${p.week_start}â€“W${p.week_end}` : 'pre-protokol';
+    const dateRange = `${fmtMonthShort(p.date_start)} â€“ ${fmtMonthShort(p.date_end)}`;
     const phaseShort = phase ? (phase.length > 70 ? phase.slice(0, 67) + '...' : phase) : '';
 
     return `<div class="ph-card${sel?' sel-all':''}" onclick="selectQ('${p.period_id}')" style="cursor:pointer">
@@ -283,13 +283,13 @@ function renderQuarterCardRow(){
         ${p.label_short}
       </div>
       <div class="ph-name">${p.label_short}</div>
-      <div class="ph-desc" style="font-size:10.5px">${weeks} · ${dateRange}</div>
+      <div class="ph-desc" style="font-size:10.5px">${weeks} Â· ${dateRange}</div>
       <div class="ph-grid" style="grid-template-columns:1fr 1fr">
         <div class="ph-stat"><div class="ph-stat-l">BB Target</div><div class="ph-stat-v" style="color:${hasBB?'var(--acc)':'var(--t3)'};font-size:13px">${bbRange}</div></div>
         <div class="ph-stat"><div class="ph-stat-l">BF Target</div><div class="ph-stat-v" style="color:${hasBF?'var(--acc)':'var(--t3)'};font-size:13px">${bfRange}</div></div>
         <div class="ph-stat" style="grid-column:1/-1">
           <div class="ph-stat-l">Phase</div>
-          <div class="ph-stat-v" style="font-size:11px;line-height:1.35" title="${(phase||'').replace(/"/g,'&quot;')}">${phaseShort || '<span style="color:var(--t3)">—</span>'}</div>
+          <div class="ph-stat-v" style="font-size:11px;line-height:1.35" title="${(phase||'').replace(/"/g,'&quot;')}">${phaseShort || '<span style="color:var(--t3)">â€”</span>'}</div>
         </div>
       </div>
     </div>`;
@@ -300,7 +300,7 @@ function renderQuarterCardRow(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem">${cards}</div>`;
 }
 
-// ── PANEL: OVERVIEW ──
+// â”€â”€ PANEL: OVERVIEW â”€â”€
 function pOverview(){
   const wk = S.currentWeek;
   const q  = S.currentQuarter;
@@ -314,48 +314,48 @@ function pOverview(){
 
   const statusBar = `
     <div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">📊 Status Tubuh Saat Ini ${bc ? `<span style="font-size:9px;font-weight:600;color:var(--t3);margin-left:4px">${fmtDate(bc.logged_date)}</span>` : ''}</div>
+      <div class="card-title">ðŸ“Š Status Tubuh Saat Ini ${bc ? `<span style="font-size:9px;font-weight:600;color:var(--t3);margin-left:4px">${fmtDate(bc.logged_date)}</span>` : ''}</div>
       <div class="vial-summary-strip" style="grid-template-columns:repeat(4,1fr);margin-bottom:0">
         <div class="vs-card">
           <div class="vs-l">Body Weight</div>
-          <div class="vs-v" style="color:var(--t0)">${bb ?? '—'}<span style="font-size:13px;font-weight:600"> kg</span></div>
+          <div class="vs-v" style="color:var(--t0)">${bb ?? 'â€”'}<span style="font-size:13px;font-weight:600"> kg</span></div>
           <div class="vs-s">Target: ${q?.bb_end ?? '?'} kg</div>
         </div>
         <div class="vs-card">
           <div class="vs-l">Body Fat %</div>
-          <div class="vs-v" style="color:${bfColor}">${bf ?? '—'}<span style="font-size:13px;font-weight:600">${bf!==null?'%':''}</span></div>
-          <div class="vs-s">Target: ${TARGET_BF_LO}–${TARGET_BF_HI}%</div>
+          <div class="vs-v" style="color:${bfColor}">${bf ?? 'â€”'}<span style="font-size:13px;font-weight:600">${bf!==null?'%':''}</span></div>
+          <div class="vs-s">Target: ${TARGET_BF_LO}â€“${TARGET_BF_HI}%</div>
         </div>
         <div class="vs-card">
           <div class="vs-l">Lean Mass</div>
-          <div class="vs-v" style="color:${lbmColor}">${lbm ?? '—'}<span style="font-size:13px;font-weight:600">${lbm!==null?' kg':''}</span></div>
-          <div class="vs-s">Target: ≥${TARGET_LBM} kg</div>
+          <div class="vs-v" style="color:${lbmColor}">${lbm ?? 'â€”'}<span style="font-size:13px;font-weight:600">${lbm!==null?' kg':''}</span></div>
+          <div class="vs-s">Target: â‰¥${TARGET_LBM} kg</div>
         </div>
         <div class="vs-card">
           <div class="vs-l">Protocol Week</div>
-          <div class="vs-v" style="color:var(--acc)">${wk > 0 ? 'W'+wk : '—'}</div>
+          <div class="vs-v" style="color:var(--acc)">${wk > 0 ? 'W'+wk : 'â€”'}</div>
           <div class="vs-s">${q ? q.quarter_id.replace('_',' ') : 'Belum mulai'}</div>
         </div>
       </div>
-      ${!S.user ? `<div style="font-size:11px;color:var(--t3);margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--bdr)">💡 Login untuk melihat data body comp aktual kamu</div>` : ''}
+      ${!S.user ? `<div style="font-size:11px;color:var(--t3);margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--bdr)">ðŸ’¡ Login untuk melihat data body comp aktual kamu</div>` : ''}
     </div>`;
 
   const appLinks = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.75rem">
       <a href="${APP_PEP}" target="_blank" style="text-decoration:none">
         <div class="card" style="cursor:pointer;transition:all .2s;border:2px solid var(--bdr)" onmouseover="this.style.borderColor='var(--f2)'" onmouseout="this.style.borderColor='var(--bdr)'">
-          <div style="font-size:1.75rem;margin-bottom:6px">💉</div>
+          <div style="font-size:1.75rem;margin-bottom:6px">ðŸ’‰</div>
           <div style="font-size:13px;font-weight:800;color:var(--t0)">Peptide Dashboard</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:3px">Compounds · Dose · Gantt · Budget</div>
-          <div style="font-size:10px;color:var(--acc);font-weight:700;margin-top:8px">Buka App →</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:3px">Compounds Â· Dose Â· Gantt Â· Budget</div>
+          <div style="font-size:10px;color:var(--acc);font-weight:700;margin-top:8px">Buka App â†’</div>
         </div>
       </a>
       <a href="${APP_EXERCISE}" target="_blank" style="text-decoration:none">
         <div class="card" style="cursor:pointer;transition:all .2s;border:2px solid var(--bdr)" onmouseover="this.style.borderColor='var(--f3)'" onmouseout="this.style.borderColor='var(--bdr)'">
-          <div style="font-size:1.75rem;margin-bottom:6px">🏋️</div>
+          <div style="font-size:1.75rem;margin-bottom:6px">ðŸ‹ï¸</div>
           <div style="font-size:13px;font-weight:800;color:var(--t0)">Exercise Dashboard</div>
-          <div style="font-size:11px;color:var(--t2);margin-top:3px">Gym Log · Cardio · Progression</div>
-          <div style="font-size:10px;color:var(--f3);font-weight:700;margin-top:8px">Buka App →</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:3px">Gym Log Â· Cardio Â· Progression</div>
+          <div style="font-size:10px;color:var(--f3);font-weight:700;margin-top:8px">Buka App â†’</div>
         </div>
       </a>
     </div>`;
@@ -364,8 +364,8 @@ function pOverview(){
   const gymHtml = `
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title" style="justify-content:space-between">
-        <span>🏋️ Gym — Minggu Ini</span>
-        <a href="${APP_EXERCISE}" target="_blank" style="font-size:10px;color:var(--acc);font-weight:700;text-decoration:none">Lihat semua →</a>
+        <span>ðŸ‹ï¸ Gym â€” Minggu Ini</span>
+        <a href="${APP_EXERCISE}" target="_blank" style="font-size:10px;color:var(--acc);font-weight:700;text-decoration:none">Lihat semua â†’</a>
       </div>
       ${!S.user ? `<div style="font-size:11px;color:var(--t3)">Login untuk melihat log gym kamu</div>` :
         gymSessions.length ? `
@@ -375,7 +375,7 @@ function pOverview(){
           <div style="margin-left:auto;text-align:right">
             <div style="font-size:10px;color:var(--t3)">Terakhir</div>
             <div style="font-size:12px;font-weight:700;color:var(--t0)">${fmtDate(gymSessions[0].session_date)}</div>
-            <div style="font-size:10px;color:var(--t2)">${gymSessions[0].duration_min||'—'} min</div>
+            <div style="font-size:10px;color:var(--t2)">${gymSessions[0].duration_min||'â€”'} min</div>
           </div>
         </div>
         <div style="display:flex;gap:5px;flex-wrap:wrap">
@@ -393,8 +393,8 @@ function pOverview(){
   const cardioHtml = `
     <div class="card" style="margin-bottom:.75rem">
       <div class="card-title" style="justify-content:space-between">
-        <span>🏃 Cardio — Minggu Ini</span>
-        <a href="${APP_EXERCISE}" target="_blank" style="font-size:10px;color:var(--acc);font-weight:700;text-decoration:none">Lihat semua →</a>
+        <span>ðŸƒ Cardio â€” Minggu Ini</span>
+        <a href="${APP_EXERCISE}" target="_blank" style="font-size:10px;color:var(--acc);font-weight:700;text-decoration:none">Lihat semua â†’</a>
       </div>
       ${!S.user ? `<div style="font-size:11px;color:var(--t3)">Login untuk melihat log cardio kamu</div>` :
         cardioLog.length ? `
@@ -406,7 +406,7 @@ function pOverview(){
           <div><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">Jarak</div>
             <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--t0)">${totalKm.toFixed(1)}<span style="font-size:11px"> km</span></div></div>
           <div><div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">Zone</div>
-            <div style="display:flex;gap:4px;margin-top:4px"><span class="bdg bdg-f3">Z1×${z1Count}</span><span class="bdg bdg-acc">Z2×${z2Count}</span></div></div>
+            <div style="display:flex;gap:4px;margin-top:4px"><span class="bdg bdg-f3">Z1Ã—${z1Count}</span><span class="bdg bdg-acc">Z2Ã—${z2Count}</span></div></div>
         </div>` :
         `<div style="font-size:11px;color:var(--t3)">Belum ada cardio minggu ini</div>`
       }
@@ -414,17 +414,17 @@ function pOverview(){
 
   const raceHtml = `
     <div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">🏁 Race Countdown</div>
+      <div class="card-title">ðŸ Race Countdown</div>
       ${RACES.map(r=>{
         const days = daysUntil(r.date);
         return `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--bdr)">
           <div style="font-size:1.5rem">${r.icon}</div>
           <div style="flex:1">
             <div style="font-size:12px;font-weight:800;color:var(--t0)">${r.name}</div>
-            <div style="font-size:10px;color:var(--t2)">${r.date} · ${r.dist}</div>
+            <div style="font-size:10px;color:var(--t2)">${r.date} Â· ${r.dist}</div>
           </div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:${days<90?'var(--warn)':days<180?'var(--f2)':'var(--acc)'};white-space:nowrap">
-            ${days>0 ? days+' hari' : '🎯 RACE DAY'}
+            ${days>0 ? days+' hari' : 'ðŸŽ¯ RACE DAY'}
           </div>
         </div>`;
       }).join('')}
@@ -432,16 +432,16 @@ function pOverview(){
 
   const qProgress = q ? `
     <div class="card">
-      <div class="card-title">📋 Quarter Aktif: ${q.quarter_id.replace('_',' ')}</div>
-      <div style="font-size:11px;color:var(--t2);margin-bottom:.75rem">${q.window_raw||''} · ${q.phase_type||''}</div>
+      <div class="card-title">ðŸ“‹ Quarter Aktif: ${q.quarter_id.replace('_',' ')}</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:.75rem">${q.window_raw||''} Â· ${q.phase_type||''}</div>
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:.875rem">
         <div style="background:var(--bg2);border-radius:var(--r);padding:.625rem .75rem;border:1px solid var(--bdr)">
           <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">BB Target</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--t0);margin-top:2px">${q.bb_start??'?'} → ${q.bb_end??'?'} kg</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--t0);margin-top:2px">${q.bb_start??'?'} â†’ ${q.bb_end??'?'} kg</div>
         </div>
         <div style="background:var(--bg2);border-radius:var(--r);padding:.625rem .75rem;border:1px solid var(--bdr)">
           <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">BF% Target</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--f3);margin-top:2px">${q.bf_start??'?'} → ${q.bf_end??'?'}%</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--f3);margin-top:2px">${q.bf_start??'?'} â†’ ${q.bf_end??'?'}%</div>
         </div>
       </div>
       ${q.total_weeks ? `
@@ -460,21 +460,21 @@ function pOverview(){
   return statusBar + checkpointsHtml + appLinks + gymHtml + cardioHtml + raceHtml + qProgress;
 }
 
-// ── CHECKPOINTS ──
+// â”€â”€ CHECKPOINTS â”€â”€
 function renderCheckpoints(periodId){
   if(!periodId) return '';
   const ms = getMilestonesForPeriod(periodId);
   if(!ms.length){
     return `<div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">📍 Checkpoints — ${periodId.replace('_',' ')}</div>
+      <div class="card-title">ðŸ“ Checkpoints â€” ${periodId.replace('_',' ')}</div>
       <div class="empty-state" style="padding:1.5rem 1rem">
-        <div class="empty-ico">📍</div>
+        <div class="empty-ico">ðŸ“</div>
         <div class="empty-txt">Belum ada checkpoint data untuk quarter ini</div>
       </div>
     </div>`;
   }
   return `<div class="card" style="margin-bottom:.75rem">
-    <div class="card-title">📍 Checkpoints — ${periodId.replace('_',' ')} · ${ms.length} milestone</div>
+    <div class="card-title">ðŸ“ Checkpoints â€” ${periodId.replace('_',' ')} Â· ${ms.length} milestone</div>
     ${ms.map((m,i)=>`
       <div class="ms-row">
         <div class="ms-dot" style="background:hsl(${200+i*25},65%,55%)"></div>
@@ -490,7 +490,7 @@ function renderCheckpoints(periodId){
   </div>`;
 }
 
-// ── PANEL: MILESTONES ──
+// â”€â”€ PANEL: MILESTONES â”€â”€
 function msInp(pid, field, val, type='text', w='80px'){
   const esc = (v) => String(v??'').replace(/"/g,'&quot;');
   return `<input
@@ -508,8 +508,8 @@ function pMilestones(){
   return `
     <div class="card">
       <div class="card-title" style="justify-content:space-between">
-        <span>🗓️ Full Quarter Timeline 2026–2030 · ${S.timeline?.length || 0} quarters</span>
-        ${canEdit ? `<span style="font-size:10px;color:var(--f3);font-weight:700">✏️ Login — klik field untuk edit langsung</span>` : `<span style="font-size:10px;color:var(--t3)">Login untuk edit</span>`}
+        <span>ðŸ—“ï¸ Full Quarter Timeline 2026â€“2030 Â· ${S.timeline?.length || 0} quarters</span>
+        ${canEdit ? `<span style="font-size:10px;color:var(--f3);font-weight:700">âœï¸ Login â€” klik field untuk edit langsung</span>` : `<span style="font-size:10px;color:var(--t3)">Login untuk edit</span>`}
       </div>
 
       <div style="display:grid;grid-template-columns:auto 100px 1fr auto auto auto auto;gap:0;margin-bottom:4px;padding:0 6px 6px">
@@ -525,32 +525,32 @@ function pMilestones(){
       ${(S.timeline||[]).map((p,i)=>{
         const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
         const yearChange = i > 0 && p.year !== S.timeline[i-1].year;
-        const weeks = (p.week_start && p.week_end) ? `W${p.week_start}–W${p.week_end}` : 'pre';
-        const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
+        const weeks = (p.week_start && p.week_end) ? `W${p.week_start}â€“W${p.week_end}` : 'pre';
+        const dateRange = `${fmtMonthShort(p.date_start)} â€“ ${fmtMonthShort(p.date_end)}`;
         const pid = p.period_id;
 
         const focusCell = canEdit ? `
           <div style="display:flex;flex-direction:column;gap:4px">
             ${msInp(pid,'focus_roadmap', p.focus_roadmap,'text','100%')}
             <div style="display:flex;gap:4px">
-              <span style="font-size:9px;color:var(--f1);font-weight:700;white-space:nowrap;align-self:center">💉</span>
+              <span style="font-size:9px;color:var(--f1);font-weight:700;white-space:nowrap;align-self:center">ðŸ’‰</span>
               ${msInp(pid,'focus_pep', p.focus_pep,'text','calc(50% - 12px)')}
-              <span style="font-size:9px;color:var(--f3);font-weight:700;white-space:nowrap;align-self:center">🏋️</span>
+              <span style="font-size:9px;color:var(--f3);font-weight:700;white-space:nowrap;align-self:center">ðŸ‹ï¸</span>
               ${msInp(pid,'focus_exercise', p.focus_exercise,'text','calc(50% - 12px)')}
             </div>
           </div>` : `
           <div>
-            <div style="font-size:12px;color:var(--t1)">${p.focus_roadmap||'<span style="color:var(--t3)">—</span>'}</div>
+            <div style="font-size:12px;color:var(--t1)">${p.focus_roadmap||'<span style="color:var(--t3)">â€”</span>'}</div>
             <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
-              ${p.focus_pep?`<span style="background:var(--f1-bg);color:var(--f1);padding:2px 7px;border-radius:10px;font-size:10px">💉 ${p.focus_pep}</span>`:''}
-              ${p.focus_exercise?`<span style="background:var(--f3-bg);color:var(--f3);padding:2px 7px;border-radius:10px;font-size:10px">🏋️ ${p.focus_exercise}</span>`:''}
+              ${p.focus_pep?`<span style="background:var(--f1-bg);color:var(--f1);padding:2px 7px;border-radius:10px;font-size:10px">ðŸ’‰ ${p.focus_pep}</span>`:''}
+              ${p.focus_exercise?`<span style="background:var(--f3-bg);color:var(--f3);padding:2px 7px;border-radius:10px;font-size:10px">ðŸ‹ï¸ ${p.focus_exercise}</span>`:''}
             </div>
           </div>`;
 
-        const bbStartCell = canEdit ? msInp(pid,'bb_start_kg', p.bb_start_kg,'number','68px') : `<span style="font-size:12px;font-weight:700;color:${color}">${p.bb_start_kg??'—'}</span>`;
-        const bbEndCell   = canEdit ? msInp(pid,'bb_end_kg',   p.bb_end_kg,  'number','68px') : `<span style="font-size:12px;font-weight:700;color:${color}">${p.bb_end_kg??'—'}</span>`;
-        const bfStartCell = canEdit ? msInp(pid,'bf_start_pct',p.bf_start_pct,'number','56px') : `<span style="font-size:12px;color:var(--t1)">${p.bf_start_pct??'—'}</span>`;
-        const bfEndCell   = canEdit ? msInp(pid,'bf_end_pct',  p.bf_end_pct,  'number','56px') : `<span style="font-size:12px;color:var(--f3)">${p.bf_end_pct??'—'}</span>`;
+        const bbStartCell = canEdit ? msInp(pid,'bb_start_kg', p.bb_start_kg,'number','68px') : `<span style="font-size:12px;font-weight:700;color:${color}">${p.bb_start_kg??'â€”'}</span>`;
+        const bbEndCell   = canEdit ? msInp(pid,'bb_end_kg',   p.bb_end_kg,  'number','68px') : `<span style="font-size:12px;font-weight:700;color:${color}">${p.bb_end_kg??'â€”'}</span>`;
+        const bfStartCell = canEdit ? msInp(pid,'bf_start_pct',p.bf_start_pct,'number','56px') : `<span style="font-size:12px;color:var(--t1)">${p.bf_start_pct??'â€”'}</span>`;
+        const bfEndCell   = canEdit ? msInp(pid,'bf_end_pct',  p.bf_end_pct,  'number','56px') : `<span style="font-size:12px;color:var(--f3)">${p.bf_end_pct??'â€”'}</span>`;
 
         return `
           ${yearChange ? `<div style="grid-column:1/-1;height:1px;background:var(--bdr);margin:4px 0"></div>` : ''}
@@ -571,19 +571,21 @@ function pMilestones(){
       }).join('')}
 
       <div id="ms-save-bar" style="display:none;position:sticky;bottom:0;background:var(--bg1);border-top:2px solid var(--acc);padding:.75rem 6px;margin-top:8px;display:flex;align-items:center;gap:10px">
-        <button onclick="saveMsChanges()" style="padding:7px 18px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">💾 Simpan Semua Perubahan</button>
-        <button onclick="discardMsChanges()" style="padding:7px 14px;background:var(--bg3);color:var(--t2);border:1px solid var(--bdr);border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">✕ Batal</button>
+        <button onclick="saveMsChanges()" style="padding:7px 18px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">ðŸ’¾ Simpan Semua Perubahan</button>
+        <button onclick="discardMsChanges()" style="padding:7px 14px;background:var(--bg3);color:var(--t2);border:1px solid var(--bdr);border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">âœ• Batal</button>
         <span id="ms-save-msg" style="font-size:11px;color:var(--t3)"></span>
       </div>
     </div>`;
 }
 
-// ── PANEL: DOCS ──
+// â”€â”€ PANEL: DOCS â”€â”€
 // Baca langsung dari S.byPeriod (sudah di-load saat init dari master_timeline)
 function pDocs(){
   const qid = S.selectedQ || getAllPeriodIds()[0];
-  if(!qid) return `<div class="card"><div class="empty-state"><div class="empty-ico">📄</div><div>Loading...</div></div></div>`;
-  const col = 'content_' + S.activeDoc.toLowerCase() + '_md';
+  if(!qid) return `<div class="card"><div class="empty-state"><div class="empty-ico">ðŸ“„</div><div>Loading...</div></div></div>`;
+  const col = S.activeDoc === 'MACROCYCLE'
+    ? 'content_macrocycle_md'
+    : 'content_' + S.activeDoc.toLowerCase() + '_md';
   const md = S.byPeriod[qid]?.[col] || '';
   return _docsHtml(qid, md);
 }
@@ -591,12 +593,12 @@ function pDocs(){
 function _docsHtml(qid, md){
   const isLoading = md === null;
   const content = isLoading
-    ? `<div style="color:var(--t3);font-size:12px;padding:2rem;text-align:center">⏳ Memuat...</div>`
+    ? `<div style="color:var(--t3);font-size:12px;padding:2rem;text-align:center">â³ Memuat...</div>`
     : `<div class="md-content">${renderMd(md)}</div>`;
   return `
     <div class="doc-sel-row">
       <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--acc-bg);border:1px solid var(--acc-bdr);border-radius:var(--r);font-size:11px;font-weight:700;color:var(--acc)">
-        📅 ${qid.replace('_',' ')}
+        ðŸ“… ${qid.replace('_',' ')}
       </div>
       ${DOC_TYPES.map(d=>`
         <button class="doc-btn${S.activeDoc===d?' act':''}" onclick="setActiveDoc('${d}')">${DOC_ICONS[d]} ${d}</button>`).join('')}
@@ -604,12 +606,12 @@ function _docsHtml(qid, md){
     <div class="card">${content}</div>`;
 }
 
-// ── PANEL: BODY COMP ──
+// â”€â”€ PANEL: BODY COMP â”€â”€
 function pBodyComp(){
   if(!S.user) return `
     <div class="card">
-      <div class="card-title">📊 Body Composition Log</div>
-      <div class="empty-state"><div class="empty-ico">🔒</div><div class="empty-txt">Login untuk melihat dan input data body comp kamu</div></div>
+      <div class="card-title">ðŸ“Š Body Composition Log</div>
+      <div class="empty-state"><div class="empty-ico">ðŸ”’</div><div class="empty-txt">Login untuk melihat dan input data body comp kamu</div></div>
     </div>`;
 
   const log  = S.bodyCompLog;
@@ -618,7 +620,7 @@ function pBodyComp(){
 
   const statsHtml = last ? `
     <div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">📍 Kondisi Terakhir <span style="font-size:9px;font-weight:600;color:var(--t3);margin-left:4px">${fmtDate(last.logged_date)}</span></div>
+      <div class="card-title">ðŸ“ Kondisi Terakhir <span style="font-size:9px;font-weight:600;color:var(--t3);margin-left:4px">${fmtDate(last.logged_date)}</span></div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
         ${[
           { l:'Body Weight', v:last.weight_kg, tgt:S.currentQuarter?.bb_end, unit:' kg', color:'var(--f2)', lower:true },
@@ -630,8 +632,8 @@ function pBodyComp(){
           const clr = ok===null ? x.color : ok ? 'var(--f3)' : 'var(--warn)';
           return `<div style="background:var(--bg2);border-radius:var(--r);padding:.75rem;border:1px solid var(--bdr)">
             <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">${x.l}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:${clr}">${x.v??'—'}${x.v!=null?x.unit:''}</div>
-            <div style="font-size:9px;color:var(--t3);margin-top:2px">${x.tgt!=null?'Target: '+x.tgt+x.unit:'—'}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:${clr}">${x.v??'â€”'}${x.v!=null?x.unit:''}</div>
+            <div style="font-size:9px;color:var(--t3);margin-top:2px">${x.tgt!=null?'Target: '+x.tgt+x.unit:'â€”'}</div>
           </div>`;
         }).join('')}
       </div>
@@ -640,7 +642,7 @@ function pBodyComp(){
         const dBB  = (last.weight_kg - first.weight_kg).toFixed(1);
         const dBF  = last.bf_pct && first.bf_pct ? (last.bf_pct - first.bf_pct).toFixed(1) : null;
         const dLBM = last.lbm_kg  && first.lbm_kg  ? (last.lbm_kg - first.lbm_kg).toFixed(1) : null;
-        const arrow = v => parseFloat(v) < 0 ? '▼' : parseFloat(v) > 0 ? '▲' : '→';
+        const arrow = v => parseFloat(v) < 0 ? 'â–¼' : parseFloat(v) > 0 ? 'â–²' : 'â†’';
         return `<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--bdr);display:flex;gap:16px;flex-wrap:wrap">
           <div style="font-size:10px;color:var(--t3)">Perubahan dari awal log (${fmtDate(first.logged_date)}):</div>
           <span style="font-size:11px;font-weight:700;color:${parseFloat(dBB)<0?'var(--f3)':'var(--warn)'}">${arrow(dBB)} BB ${dBB} kg</span>
@@ -652,7 +654,7 @@ function pBodyComp(){
 
   const formHtml = `
     <div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">➕ Input Data Baru</div>
+      <div class="card-title">âž• Input Data Baru</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:.875rem">
         <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">TANGGAL</div>
           <input class="form-inp" type="date" id="bc-date" value="${today}" style="width:100%"></div>
@@ -661,21 +663,21 @@ function pBodyComp(){
         <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">BODY FAT %</div>
           <input class="form-inp" type="number" id="bc-bf" step="0.1" min="3" max="60" placeholder="misal: 22.5" style="width:100%" oninput="bcAutoLBM()"></div>
         <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">LEAN MASS (kg) <span style="font-weight:400;color:var(--t3);font-size:9px">auto</span></div>
-          <input class="form-inp" type="number" id="bc-lbm" step="0.1" min="20" max="150" placeholder="auto dari BB×BF" style="width:100%"></div>
+          <input class="form-inp" type="number" id="bc-lbm" step="0.1" min="20" max="150" placeholder="auto dari BBÃ—BF" style="width:100%"></div>
         <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">PINGGANG (cm)</div>
           <input class="form-inp" type="number" id="bc-waist" step="0.5" min="50" max="150" placeholder="opsional" style="width:100%"></div>
         <div><div style="font-size:10px;font-weight:700;color:var(--t3);margin-bottom:4px">NOTES</div>
           <input class="form-inp" type="text" id="bc-notes" placeholder="opsional..." style="width:100%"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button onclick="submitBodyComp()" style="padding:8px 18px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">💾 Simpan</button>
+        <button onclick="submitBodyComp()" style="padding:8px 18px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer">ðŸ’¾ Simpan</button>
         <span id="bc-msg" style="font-size:11px;color:var(--f3)"></span>
       </div>
     </div>`;
 
   const histHtml = log.length ? `
     <div class="card">
-      <div class="card-title">📅 Riwayat Lengkap <span style="font-size:10px;font-weight:600;color:var(--t3);margin-left:4px">${log.length} entri</span></div>
+      <div class="card-title">ðŸ“… Riwayat Lengkap <span style="font-size:10px;font-weight:600;color:var(--t3);margin-left:4px">${log.length} entri</span></div>
       <div class="tbl-wrap">
         <table>
           <thead><tr><th>Tanggal</th><th>Week</th><th>BB</th><th>BF%</th><th>LBM</th><th>Pinggang</th><th>Notes</th><th></th></tr></thead>
@@ -683,61 +685,61 @@ function pBodyComp(){
             ${[...log].reverse().map(r=>`<tr>
               <td style="font-weight:700;white-space:nowrap">${fmtDate(r.logged_date)}</td>
               <td><span class="bdg bdg-acc">W${r.week_num||'?'}</span></td>
-              <td class="mono" style="color:var(--f2);font-weight:700">${r.weight_kg??'—'} kg</td>
-              <td class="mono" style="color:var(--f3)">${r.bf_pct??'—'}${r.bf_pct!=null?'%':''}</td>
-              <td class="mono" style="color:var(--acc)">${r.lbm_kg??'—'}${r.lbm_kg!=null?' kg':''}</td>
-              <td class="mono">${r.waist_cm??'—'}${r.waist_cm!=null?' cm':''}</td>
+              <td class="mono" style="color:var(--f2);font-weight:700">${r.weight_kg??'â€”'} kg</td>
+              <td class="mono" style="color:var(--f3)">${r.bf_pct??'â€”'}${r.bf_pct!=null?'%':''}</td>
+              <td class="mono" style="color:var(--acc)">${r.lbm_kg??'â€”'}${r.lbm_kg!=null?' kg':''}</td>
+              <td class="mono">${r.waist_cm??'â€”'}${r.waist_cm!=null?' cm':''}</td>
               <td style="color:var(--t2);font-size:10.5px">${r.notes||''}</td>
-              <td><button onclick="deleteBodyComp(${r.id})" style="padding:3px 8px;background:var(--warn-bg);border:1px solid var(--warn-bdr);color:var(--warn);border-radius:var(--r);font-size:10px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">✕</button></td>
+              <td><button onclick="deleteBodyComp(${r.id})" style="padding:3px 8px;background:var(--warn-bg);border:1px solid var(--warn-bdr);color:var(--warn);border-radius:var(--r);font-size:10px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">âœ•</button></td>
             </tr>`).join('')}
           </tbody>
         </table>
       </div>
     </div>` :
-    `<div class="card"><div class="empty-state"><div class="empty-ico">📊</div><div class="empty-txt">Belum ada data. Input data pertama kamu di atas!</div></div></div>`;
+    `<div class="card"><div class="empty-state"><div class="empty-ico">ðŸ“Š</div><div class="empty-txt">Belum ada data. Input data pertama kamu di atas!</div></div></div>`;
 
   return statsHtml + formHtml + histHtml;
 }
 
-// ── PANEL: RACE GOALS ──
+// â”€â”€ PANEL: RACE GOALS â”€â”€
 function pRaceGoals(){
   return `
     <div class="card" style="margin-bottom:.75rem">
-      <div class="card-title">🏁 Race Goals</div>
+      <div class="card-title">ðŸ Race Goals</div>
       ${RACES.map(r=>{
         const days = daysUntil(r.date);
         return `<div class="race-card">
           <div class="race-ico">${r.icon}</div>
           <div>
             <div class="race-name">${r.name}</div>
-            <div class="race-meta">${r.date} · ${r.dist}</div>
+            <div class="race-meta">${r.date} Â· ${r.dist}</div>
           </div>
           <div class="race-days" style="color:${days<90?'var(--warn)':days<180?'var(--f2)':'var(--acc)'}">
-            ${days>0?days+' hari lagi':'🎯 RACE DAY'}
+            ${days>0?days+' hari lagi':'ðŸŽ¯ RACE DAY'}
           </div>
         </div>`;
       }).join('')}
     </div>
     <div class="card">
-      <div class="card-title">📅 Protocol Timeline 2026–2030 · ${S.timeline?.length || 0} quarters</div>
+      <div class="card-title">ðŸ“… Protocol Timeline 2026â€“2030 Â· ${S.timeline?.length || 0} quarters</div>
       ${(S.timeline||[]).map((p,i)=>{
         const color = Q_COLORS[Math.floor(i/2) % Q_COLORS.length];
         const hasBB = p.bb_start_kg != null;
         const hasBF = p.bf_start_pct != null;
-        const bbStr = hasBB ? `${p.bb_start_kg}→${p.bb_end_kg} kg` : '—';
-        const bfStr = hasBF ? `${p.bf_start_pct}→${p.bf_end_pct}%` : '—';
-        const dateRange = `${fmtMonthShort(p.date_start)} – ${fmtMonthShort(p.date_end)}`;
+        const bbStr = hasBB ? `${p.bb_start_kg}â†’${p.bb_end_kg} kg` : 'â€”';
+        const bfStr = hasBF ? `${p.bf_start_pct}â†’${p.bf_end_pct}%` : 'â€”';
+        const dateRange = `${fmtMonthShort(p.date_start)} â€“ ${fmtMonthShort(p.date_end)}`;
         return `<div class="tl-row">
           <div class="tl-dot" style="background:${color}"></div>
           <div class="tl-q">${p.label_short}</div>
-          <div class="tl-win">${dateRange}${p.week_start?` · W${p.week_start}-W${p.week_end}`:''}</div>
-          <div class="tl-bb" style="color:${color}">${bbStr} · ${bfStr}</div>
+          <div class="tl-win">${dateRange}${p.week_start?` Â· W${p.week_start}-W${p.week_end}`:''}</div>
+          <div class="tl-bb" style="color:${color}">${bbStr} Â· ${bfStr}</div>
         </div>`;
       }).join('')}
     </div>`;
 }
 
-// ── BODY COMP ACTIONS ──
+// â”€â”€ BODY COMP ACTIONS â”€â”€
 window.bcAutoLBM = function(){
   const bb = parseFloat(document.getElementById('bc-bb')?.value);
   const bf = parseFloat(document.getElementById('bc-bf')?.value);
@@ -762,7 +764,7 @@ window.submitBodyComp = async function(){
     weight_kg: bb, bf_pct: bf, lbm_kg: lbm, waist_cm: waist, notes
   }, { onConflict: 'user_id,logged_date' });
   if(error){ msg.textContent='Error: '+error.message; msg.style.color='var(--warn)'; return; }
-  msg.textContent='✓ Tersimpan!'; msg.style.color='var(--f3)';
+  msg.textContent='âœ“ Tersimpan!'; msg.style.color='var(--f3)';
   const { data } = await supa.from('body_comp_log')
     .select('id,logged_date,week_num,weight_kg,bf_pct,lbm_kg,waist_cm,notes')
     .eq('user_id', S.user.id).order('logged_date', { ascending:true });
