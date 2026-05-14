@@ -17,9 +17,9 @@ window.addEventListener('unhandledrejection', e => {
   </div>`;
 });
 
-import { S, buildIndexes, getWeekNum, getWeekStart, quarterRollup, getAllPeriodIds } from './state.js?v=27';
-import { supa, restFetch, updateAuthUI, closeAuthModal, onAuthBtnClick, doLogin } from './supabase.js?v=27';
-import { render } from './panels.js?v=27';
+import { S, buildIndexes, getWeekNum, getWeekStart, quarterRollup, getAllPeriodIds } from './state.js?v=28';
+import { supa, restFetch, updateAuthUI, closeAuthModal, onAuthBtnClick, doLogin } from './supabase.js?v=28';
+import { render } from './panels.js?v=28';
 
 // Bind auth handlers to window (called from HTML onclick)
 window.closeAuthModal = closeAuthModal;

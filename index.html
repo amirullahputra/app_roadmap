@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=27">
+  <link rel="stylesheet" href="css/style.css?v=28">
   <style>
     /* ── QUARTER GRID ── */
     .q-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:1rem}
@@ -80,57 +80,50 @@
     .tl-table tbody td{padding:9px 12px;vertical-align:top;border-bottom:1px solid var(--bdr);font-size:11.5px;color:var(--t1);line-height:1.4}
     .tl-table tbody tr:hover td{background:var(--bg2)}
     .tl-table tbody tr:last-child td{border-bottom:none}
-    /* ── MILESTONES ── */
+    /* ── MILESTONES v2 ── */
     .ms-page{padding-bottom:2rem}
-    .ms-page-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:1.5rem;flex-wrap:wrap}
-    .ms-page-title{font-size:18px;font-weight:800;color:var(--t0)}
-    .ms-page-sub{font-size:12px;color:var(--t2);margin-top:3px}
-    .ms-legend{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}
-    .ms-mc-block{margin-bottom:2rem}
-    .ms-mc-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:2px solid var(--bdr)}
-    .ms-mc-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
-    .ms-mc-label{font-size:13px;font-weight:800;flex:1}
-    .ms-mc-progress{font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;font-weight:700}
-    .ms-cards{display:flex;flex-direction:column;gap:0}
-    .ms-card{display:flex;gap:0}
-    .ms-card-left{display:flex;flex-direction:column;align-items:center;width:28px;flex-shrink:0;padding-top:4px}
-    .ms-node{width:12px;height:12px;border-radius:50%;flex-shrink:0;transition:transform .2s}
-    .ms-card:hover .ms-node{transform:scale(1.3)}
-    .ms-vline{width:2px;flex:1;min-height:20px;background:var(--bdr);margin-top:4px;margin-bottom:0}
-    .ms-card-body{flex:1;padding:.875rem .875rem .875rem .5rem;border-radius:var(--r2);transition:background .15s;margin-bottom:4px}
-    .ms-card:hover .ms-card-body{background:var(--bg2)}
-    .ms-card.ms-done .ms-card-body{opacity:.65}
-    .ms-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap}
-    .ms-card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-    .ms-cat-badge{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;display:inline-flex;align-items:center;gap:3px}
-    .ms-qref{font-size:10px;font-weight:700;color:var(--t3);font-family:'JetBrains Mono',monospace}
-    .ms-date-badge{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace}
-    .ms-status{font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
-    .ms-status.done{background:var(--f3-bg);color:var(--f3);border:1px solid var(--f3-bdr)}
-    .ms-status.failed{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bdr)}
-    .ms-status.overdue{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bdr)}
-    .ms-status.soon{background:var(--f2-bg);color:var(--f2);border:1px solid var(--f2-bdr)}
-    .ms-status.pending{background:var(--bg3);color:var(--t3);border:1px solid var(--bdr)}
-    .ms-card-id{font-size:9px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px}
-    .ms-card-title{font-size:14px;font-weight:800;color:var(--t0);margin-bottom:5px;line-height:1.3}
-    .ms-card-desc{font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:10px}
-    .ms-gate-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-    .ms-gate{border-radius:var(--r);padding:.625rem .75rem;font-size:11px}
-    .ms-gate-pass{background:var(--f3-bg);border:1px solid var(--f3-bdr)}
-    .ms-gate-fail{background:var(--warn-bg);border:1px solid var(--warn-bdr)}
-    .ms-gate-hd{font-size:9.5px;font-weight:800;margin-bottom:4px}
-    .ms-gate-pass .ms-gate-hd{color:var(--f3)}
-    .ms-gate-fail .ms-gate-hd{color:var(--warn)}
-    .ms-gate-txt{font-size:11px;color:var(--t1);line-height:1.5}
-    .ms-verif{margin-top:4px}
-    .ms-verif summary{font-size:10px;font-weight:700;color:var(--t3);cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:4px}
-    .ms-verif summary::before{content:'▶';font-size:8px;transition:transform .15s}
-    .ms-verif[open] summary::before{transform:rotate(90deg)}
-    .ms-verif-body{font-size:11px;color:var(--t2);line-height:1.6;margin-top:5px;padding:8px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--bdr)}
-    @media(max-width:480px){
-      .ms-gate-row{grid-template-columns:1fr}
-      .ms-mc-label{font-size:12px}
-    }
+    .ms-page-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:1.5rem;flex-wrap:wrap}
+    .ms-page-title{font-size:16px;font-weight:800;color:var(--t0)}
+    .ms-page-sub{font-size:11px;color:var(--t2);margin-top:2px}
+    .ms-legend{display:flex;gap:5px;flex-wrap:wrap}
+    .ms-mc-block{margin-bottom:2.5rem}
+    .ms-mc-header{display:flex;align-items:center;gap:8px;margin-bottom:.75rem}
+    .ms-mc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .ms-mc-label{font-size:12px;font-weight:800;flex:1}
+    .ms-mc-prog{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+    /* timeline rows */
+    .ms-row2{display:flex;gap:0;min-height:0}
+    .ms-row2-done{opacity:.55}
+    .ms-col-left{display:flex;flex-direction:column;align-items:center;width:24px;flex-shrink:0}
+    .ms-node2{width:10px;height:10px;border-radius:50%;border:2px solid;flex-shrink:0;margin-top:3px;background:var(--bg1)}
+    .ms-line2{width:1px;flex:1;min-height:12px;background:var(--bdr);margin:3px 0}
+    .ms-col-right{flex:1;padding:0 0 1.25rem .75rem}
+    .ms-row2-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px}
+    .ms-cat2{font-size:10px;font-weight:700}
+    .ms-id2{font-size:9px;font-weight:800;color:var(--t3);letter-spacing:.5px;font-family:'JetBrains Mono',monospace}
+    .ms-qmo{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+    .ms-st2{font-size:9.5px;font-weight:800;padding:1px 7px;border-radius:20px;margin-left:auto}
+    .ms-st2-done{background:var(--f3-bg);color:var(--f3);border:1px solid var(--f3-bdr)}
+    .ms-st2-failed{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bdr)}
+    .ms-st2-overdue{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bdr)}
+    .ms-st2-soon{background:var(--f2-bg);color:var(--f2);border:1px solid var(--f2-bdr)}
+    .ms-title2{font-size:13px;font-weight:800;color:var(--t0);margin-bottom:3px;line-height:1.3}
+    .ms-desc2{font-size:11.5px;color:var(--t2);line-height:1.6;margin-bottom:6px}
+    .ms-detail2 summary{font-size:10px;font-weight:700;color:var(--t3);cursor:pointer;list-style:none;user-select:none;display:inline-flex;align-items:center;gap:4px}
+    .ms-detail2 summary::before{content:'▸';transition:transform .15s;display:inline-block}
+    .ms-detail2[open] summary::before{transform:rotate(90deg)}
+    .ms-detail2-body{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+    .ms-gate2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .ms-gate2-pass,.ms-gate2-fail{font-size:11px;color:var(--t1);line-height:1.5;padding:6px 8px;border-radius:6px}
+    .ms-gate2-pass{background:var(--f3-bg);border-left:3px solid var(--f3)}
+    .ms-gate2-fail{background:var(--warn-bg);border-left:3px solid var(--warn)}
+    .ms-verif2{font-size:11px;color:var(--t2);line-height:1.5;padding:6px 8px;border-radius:6px;background:var(--bg2);border-left:3px solid var(--bdr2)}
+    .ms-gate2-lbl{display:block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;opacity:.7}
+    .ms-gate2-pass .ms-gate2-lbl{color:var(--f3)}
+    .ms-gate2-fail .ms-gate2-lbl{color:var(--warn)}
+    .ms-verif2 .ms-gate2-lbl{color:var(--t3)}
+    /* status legend chips */
+    .ms-st2{display:inline-block}
     /* ── MOBILE ── */
     @media(max-width:480px){
       .q-grid{grid-template-columns:1fr}
@@ -187,7 +180,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<div id="app-version" style="position:fixed;bottom:4px;right:8px;font-size:9px;color:#999;opacity:.5;font-family:'JetBrains Mono',monospace;pointer-events:none;z-index:9999">v=27</div>
-<script type="module" src="js/main.js?v=27"></script>
+<div id="app-version" style="position:fixed;bottom:4px;right:8px;font-size:9px;color:#999;opacity:.5;font-family:'JetBrains Mono',monospace;pointer-events:none;z-index:9999">v=28</div>
+<script type="module" src="js/main.js?v=28"></script>
 </body>
 </html>

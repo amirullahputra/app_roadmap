@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=27';
-import { supa, updateTimelineRow } from './supabase.js?v=27';
+} from './state.js?v=28';
+import { supa, updateTimelineRow } from './supabase.js?v=28';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -544,60 +544,47 @@ function pMilestones(){
       const isPast = days !== null && days < 0;
       const isDone = m.status === 'done';
       const isFailed = m.status === 'failed';
+      const isLast = idx === items.length - 1;
 
-      let statusBadge, statusDot;
+      let statusCls, statusTxt, nodeColor, nodeBg;
       if(isDone){
-        statusBadge = `<span class="ms-status done">✓ Done</span>`;
-        statusDot = 'var(--f3)';
+        statusCls='done'; statusTxt='✓ Done'; nodeColor='var(--f3)'; nodeBg='var(--f3-bg)';
       } else if(isFailed){
-        statusBadge = `<span class="ms-status failed">✕ Failed</span>`;
-        statusDot = 'var(--warn)';
+        statusCls='failed'; statusTxt='✕ Failed'; nodeColor='var(--warn)'; nodeBg='var(--warn-bg)';
       } else if(isPast){
-        statusBadge = `<span class="ms-status overdue">⚠ Overdue</span>`;
-        statusDot = 'var(--warn)';
+        statusCls='overdue'; statusTxt='Overdue'; nodeColor='var(--warn)'; nodeBg='var(--warn-bg)';
       } else if(days !== null && days <= 90){
-        statusBadge = `<span class="ms-status soon">${days}d lagi</span>`;
-        statusDot = 'var(--f2)';
+        statusCls='soon'; statusTxt=`${days}d`; nodeColor='var(--f2)'; nodeBg='var(--f2-bg)';
       } else {
-        statusBadge = `<span class="ms-status pending">Pending</span>`;
-        statusDot = 'var(--bdr2)';
+        statusCls='pending'; statusTxt=''; nodeColor='var(--bdr2)'; nodeBg='transparent';
       }
 
-      const dateStr = dateTarget ? dateTarget.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) : '—';
-      const qRef = m.quarter_ref ? `<span class="ms-qref">${m.quarter_ref.replace('_',' ')}</span>` : '';
+      const mo = dateTarget ? dateTarget.toLocaleDateString('id-ID',{month:'short',year:'numeric'}) : '—';
+      const qShort = m.quarter_ref ? m.quarter_ref.replace('_',' ') : '';
 
-      return `<div class="ms-card${isDone?' ms-done':''}${isFailed?' ms-failed':''}">
-        <div class="ms-card-left">
-          <div class="ms-dot-line">
-            <div class="ms-node" style="background:${statusDot};box-shadow:0 0 0 3px color-mix(in srgb,${statusDot} 20%,transparent)"></div>
-            ${idx < items.length-1 ? `<div class="ms-vline"></div>` : ''}
-          </div>
+      return `<div class="ms-row2${isDone?' ms-row2-done':''}">
+        <div class="ms-col-left">
+          <div class="ms-node2" style="background:${nodeColor};border-color:${nodeColor}"></div>
+          ${!isLast ? `<div class="ms-line2"></div>` : ''}
         </div>
-        <div class="ms-card-body">
-          <div class="ms-card-header">
-            <div class="ms-card-meta">
-              <span class="ms-cat-badge" style="background:${cat.bg};color:${cat.color};border-color:${cat.bdr}">${cat.icon} ${cat.label}</span>
-              ${qRef}
-              <span class="ms-date-badge">${dateStr}</span>
-            </div>
-            ${statusBadge}
+        <div class="ms-col-right">
+          <div class="ms-row2-top">
+            <span class="ms-cat2" style="color:${cat.color}">${cat.icon} ${cat.label}</span>
+            <span class="ms-id2">${m.milestone_id}</span>
+            <span class="ms-qmo">${qShort} · ${mo}</span>
+            ${statusTxt ? `<span class="ms-st2 ms-st2-${statusCls}">${statusTxt}</span>` : ''}
           </div>
-          <div class="ms-card-id">${m.milestone_id}</div>
-          <div class="ms-card-title">${m.label}</div>
-          <div class="ms-card-desc">${m.description || ''}</div>
-          <div class="ms-gate-row">
-            <div class="ms-gate ms-gate-pass">
-              <div class="ms-gate-hd">✅ Gate Pass</div>
-              <div class="ms-gate-txt">${m.gate_pass || '—'}</div>
+          <div class="ms-title2">${m.label}</div>
+          <div class="ms-desc2">${m.description || ''}</div>
+          <details class="ms-detail2">
+            <summary>Gate &amp; Verifikasi</summary>
+            <div class="ms-detail2-body">
+              <div class="ms-gate2">
+                <div class="ms-gate2-pass"><span class="ms-gate2-lbl">✓ Pass</span>${m.gate_pass||'—'}</div>
+                <div class="ms-gate2-fail"><span class="ms-gate2-lbl">✕ Fail</span>${m.gate_fail||'—'}</div>
+              </div>
+              <div class="ms-verif2"><span class="ms-gate2-lbl">Verif</span>${m.verification||'—'}</div>
             </div>
-            <div class="ms-gate ms-gate-fail">
-              <div class="ms-gate-hd">⚠️ Gate Fail</div>
-              <div class="ms-gate-txt">${m.gate_fail || '—'}</div>
-            </div>
-          </div>
-          <details class="ms-verif">
-            <summary>Verifikasi</summary>
-            <div class="ms-verif-body">${m.verification || '—'}</div>
           </details>
         </div>
       </div>`;
@@ -607,9 +594,9 @@ function pMilestones(){
       <div class="ms-mc-header">
         <div class="ms-mc-dot" style="background:${mcColor}"></div>
         <div class="ms-mc-label" style="color:${mcColor}">${mcLabel}</div>
-        <div class="ms-mc-progress">${doneCount}/${items.length} done</div>
+        <div class="ms-mc-prog">${doneCount}/${items.length} done</div>
       </div>
-      <div class="ms-cards">${cards}</div>
+      ${cards}
     </div>`;
   }).join('');
 
