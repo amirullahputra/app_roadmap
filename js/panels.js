@@ -7,8 +7,8 @@ import {
   RACES, Q_COLORS, DOC_TYPES, DOC_ICONS, TABS,
   daysUntil, fmtDate, fmtMonthShort, getWeekNum,
   quarterRollup, getAllPeriodIds, getMilestonesForPeriod, getDocContent, renderMd,
-} from './state.js?v=28';
-import { supa, updateTimelineRow } from './supabase.js?v=28';
+} from './state.js?v=29';
+import { supa, updateTimelineRow } from './supabase.js?v=29';
 
 // ── RENDER ──
 function renderTabNav(){
@@ -524,6 +524,95 @@ function pMilestones(){
 
   const today = new Date();
 
+  // ── Dashboard stats ──
+  const totalMs = ms.length;
+  const doneMs  = ms.filter(m => m.status === 'done').length;
+  const failMs  = ms.filter(m => m.status === 'failed').length;
+  const overdueMs = ms.filter(m => {
+    if(m.status === 'done' || m.status === 'failed') return false;
+    if(!m.date_target) return false;
+    return new Date(m.date_target) < today;
+  }).length;
+  const pendingMs = totalMs - doneMs - failMs - overdueMs;
+  const pct = totalMs ? Math.round((doneMs / totalMs) * 100) : 0;
+
+  // Next upcoming milestone (not done/failed, future date, nearest)
+  const upcoming = ms
+    .filter(m => m.status !== 'done' && m.status !== 'failed' && m.date_target && new Date(m.date_target) >= today)
+    .sort((a,b) => new Date(a.date_target) - new Date(b.date_target))[0] || null;
+  const upDays = upcoming ? Math.ceil((new Date(upcoming.date_target) - today) / (1000*60*60*24)) : null;
+
+  // Per-MC progress
+  const MC_LABELS = { MC1:'MC1', MC2:'MC2', MC3:'MC3', MC4:'MC4', MC5:'MC5' };
+  const byMC_stats = {};
+  ms.forEach(m => {
+    const mc = m.macrocycle_id || 'MC?';
+    if(!byMC_stats[mc]) byMC_stats[mc] = { total:0, done:0 };
+    byMC_stats[mc].total++;
+    if(m.status === 'done') byMC_stats[mc].done++;
+  });
+
+  const mcProgBars = Object.entries(byMC_stats).map(([mc, s]) => {
+    const p = s.total ? Math.round((s.done/s.total)*100) : 0;
+    const c = MC_COLORS[mc] || 'var(--t2)';
+    return `<div style="min-width:80px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span style="font-size:9px;font-weight:800;color:${c}">${mc}</span>
+        <span style="font-size:9px;color:var(--t3)">${s.done}/${s.total}</span>
+      </div>
+      <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${p}%;background:${c};border-radius:2px;transition:width .4s"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const dashCard = `<div class="card" style="margin-bottom:.875rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--t0)">🏆 Protocol Milestones</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${totalMs} gate milestones · 2026–2030</div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--acc)">${pct}<span style="font-size:14px">%</span></div>
+    </div>
+
+    <div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:.875rem">
+      <div style="height:100%;width:${pct}%;background:var(--acc);border-radius:3px;transition:width .4s"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:.875rem">
+      <div style="background:var(--f3-bg);border:1px solid var(--f3-bdr);border-radius:var(--r);padding:.625rem .75rem;text-align:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--f3)">${doneMs}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:2px">Done</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:.625rem .75rem;text-align:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--t2)">${pendingMs}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:2px">Pending</div>
+      </div>
+      <div style="background:var(--warn-bg);border:1px solid var(--warn-bdr);border-radius:var(--r);padding:.625rem .75rem;text-align:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--warn)">${overdueMs}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:2px">Overdue</div>
+      </div>
+      <div style="background:var(--f2-bg);border:1px solid var(--f2-bdr);border-radius:var(--r);padding:.625rem .75rem;text-align:center">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--f2)">${failMs}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:2px">Failed</div>
+      </div>
+    </div>
+
+    ${upcoming ? `<div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:.75rem;margin-bottom:.875rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="font-size:1.5rem">${(MS_CAT[upcoming.category]||{icon:'📌'}).icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px">Next Milestone</div>
+        <div style="font-size:12px;font-weight:800;color:var(--t0);margin-top:2px">${upcoming.label}</div>
+        <div style="font-size:10px;color:var(--t2);margin-top:1px">${upcoming.milestone_id} · ${upcoming.date_target}</div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:${upDays<=90?'var(--warn)':'var(--f2)'};white-space:nowrap">${upDays}d</div>
+    </div>` : ''}
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      ${mcProgBars}
+    </div>
+  </div>`;
+
   // Group by macrocycle
   const byMC = {};
   ms.forEach(m => {
@@ -601,10 +690,11 @@ function pMilestones(){
   }).join('');
 
   return `<div class="ms-page">
+    ${dashCard}
     <div class="ms-page-hd">
       <div>
-        <div class="ms-page-title">🏆 Protocol Milestones</div>
-        <div class="ms-page-sub">${ms.length} gate milestones · 2026–2030</div>
+        <div class="ms-page-title">📋 Timeline</div>
+        <div class="ms-page-sub">${ms.length} milestones · grouped by macrocycle</div>
       </div>
       <div class="ms-legend">
         <span class="ms-status done">✓ Done</span>
